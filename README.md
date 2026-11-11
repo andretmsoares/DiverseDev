@@ -35,4 +35,10 @@ python analysis/analyze.py --results results/v2 --out results/v2/report
 
 Resultados versionados em `reports/` (ver `reports/v0.3.0/ANALISE.md`).
 
+Análise geral (PDF com gráficos, comentários e o melhor algoritmo por recorte), a partir dos dados versionados:
+```
+python analysis/overall.py --out reports/v1.0.0
+```
+Saída: `reports/v1.0.0/VelozMart_MPS_Analise_Geral.pdf`.
+
 Ver `docs/CONTRACT.md` (formatos e regras), `docs/DOCKS.md` (modelos de docas) e `CONTRIBUTING.md` (git).

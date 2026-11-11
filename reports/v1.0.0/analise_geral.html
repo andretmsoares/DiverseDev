@@ -1,0 +1,146 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>VelozMart MPS - Análise geral</title>
+<style>
+@page{size:A4;margin:16mm 14mm}
+body{font-family:"Segoe UI",Arial,sans-serif;font-size:10pt;color:#1a1a1a;line-height:1.45}
+h1{font-size:23pt;margin:0 0 2px;color:#12355b}
+h2{font-size:14.5pt;color:#12355b;border-bottom:2px solid #12355b;padding-bottom:3px;margin-top:20px;page-break-after:avoid}
+h3{font-size:11.5pt;margin:12px 0 4px;page-break-after:avoid}
+.sub{color:#555;margin-bottom:12px}
+table{border-collapse:collapse;width:100%;margin:8px 0;font-size:8.8pt;page-break-inside:avoid}
+th{background:#12355b;color:#fff;text-align:left;padding:4px 6px}
+td{border:1px solid #bbb;padding:3px 6px;vertical-align:top}
+tr:nth-child(even) td{background:#f3f6fa}
+.box{border:2px solid #12355b;background:#eef3f9;padding:8px 12px;margin:8px 0;page-break-inside:avoid}
+.warn{border:2px solid #b45309;background:#fff7ed;padding:8px 12px;margin:8px 0;page-break-inside:avoid}
+figure{margin:8px 0;page-break-inside:avoid}
+figure img{width:100%}
+figcaption{font-size:8.5pt;color:#444;margin-top:2px}
+.big{font-size:12pt}
+ul{margin:4px 0 4px 18px;padding-left:6px}
+li{margin:2px 0}
+.pb{page-break-before:always}
+small{color:#444}
+</style></head><body>
+<h1>VelozMart MPS: análise geral dos testes</h1>
+<div class="sub">Comparação de estratégias de ordenação da fila de expedição, com docas especializadas e gerais · Coding Tank, Ordenação e Prioridade · 34380 execuções simuladas (12840 com janelas amplas e 21540 com janelas apertadas)</div>
+
+<div class="box big"><b>Conclusão.</b> O melhor algoritmo no geral é o <b>EDF</b> (menor prazo de expedição primeiro): nota média 68,8 de 100 e vitória clara em 20 das 23 comparações, mais 2 empates técnicos, contra 59,8 do segundo colocado (Prazo virtual α=0,5). Ele é o melhor tanto com docas especializadas quanto com docas gerais, e também na Black Friday. O prazo virtual protege os pedidos VIP, mas paga com mais atrasos e uma cauda muito pior. Se o VIP passasse a pesar 40% na nota, o resultado mudaria: o EDF cairia para a 7ª posição e passariam à frente Duas filas, WSPT e Faixas + aging, estratégias que protegem VIPs à custa da cauda, e o prazo virtual passaria a vencer 9 das 23 comparações.</div>
+
+<h2>1. Resumo executivo</h2>
+<table>
+<tr><th>Recorte</th><th>Melhor algoritmo</th><th>Evidência</th></tr>
+<tr><td><b>Geral (todas as docas e cenários)</b></td><td><b>EDF</b></td><td>nota 68,8; 20 vitórias claras e 2 empates em 23 comparações</td></tr>
+<tr><td><b>Docas especializadas</b> (com e sem empréstimo)</td><td><b>EDF</b></td><td>nota 65,1; 8 vitórias e 2 empates em 10</td></tr>
+<tr><td><b>Docas gerais</b> (uniforme, capacidade variada, velocidade variada)</td><td><b>EDF</b></td><td>nota 72,1; 12 vitórias e 0 empates em 13</td></tr>
+<tr><td><b>Black Friday</b></td><td><b>EDF</b> (com docas de capacidade variada ou especializadas)</td><td>36,1% atrasados e P99 de 154 min com docas de capacidade variada; 34,8% e 258 min com as especializadas</td></tr>
+<tr><td><b>Se o VIP voltar a ser prioridade</b></td><td>depende: Duas filas lidera a nota média (62,8), mas com cauda grande; o prazo virtual com α alto vence 9 de 23 comparações</td><td>com peso de 40% para o VIP na nota o EDF cai para 48,3 (7ª posição) e vence 6 de 23</td></tr>
+</table>
+<ul>
+<li><b>Configurações de docas (com EDF):</b> as gerais idealizadas (geral de velocidade variada e a uniforme) têm as melhores notas, mas supõem que qualquer doca embala qualquer pedido. Entre as que respeitam a restrição física de tamanho, a melhor é <b>geral de capacidade variada</b>, bem à frente das especializadas. Juntar a capacidade absorve melhor picos e rajadas; a separação rígida por tamanho cria gargalos.</li>
+<li><b>Estratégias "ótimas" em sobrecarga são enganosas:</b> Duas filas e WSPT mostram menos atrasados porque abandonam pedidos (P99 de centenas de minutos), por isso foram desqualificadas como "melhor".</li>
+<li><b>O heap é o algoritmo de ordenação mais barato</b> e dá exatamente a mesma ordem que os outros quatro.</li>
+</ul>
+
+<h2>2. Como comparamos</h2>
+<ul>
+<li><b>Dados:</b> pedidos sintéticos de uma operação de grande porte na América Latina: chegadas com picos ao longo do dia, janelas de prazo curtas, regiões distintas (BR, MX, AR, CO, CL), 8 cenários (normal 85%, pico 105%, sobrecarga 125%, Black Friday, rajada de pedidos grandes, mix deslocado, falha de doca, multi-país) e 30 sementes por cenário.</li>
+<li><b>Docas (15 por configuração):</b> especializada por tamanho (4 Express, 6 Padrão, 5 Pesada), com e sem empréstimo; geral uniforme (15 docas idênticas, fila única); geral de capacidade variada (docas pequenas só para P, médias para P e M, grandes para tudo); geral de velocidade variada (0,75×, 1,0× e 1,25×).</li>
+<li><b>Estratégias:</b> FIFO, EDF, peso composto, duas filas, faixas + aging, WSPT e prazo virtual (α de 0,5 a 5; α = 0 equivale ao EDF).</li>
+<li><b>Nota (0 a 100):</b> em cada cenário e configuração de docas, as estratégias são ordenadas por quatro métricas e combinadas com pesos do grupo: % de atrasados 35%, atraso médio 25%, P99 (cauda) 30% e % de VIPs atrasados 10%. A nota média é feita sobre os cenários em que houve atraso.</li>
+<li><b>Desqualificação por abandono:</b> uma estratégia não pode ser "a melhor" se seu P99 passa de 3 vezes o do EDF e de 120 min.</li>
+<li><b>Empate técnico:</b> se a melhor estratégia fica a menos de 0,3 ponto percentual de atrasados, 2 min de P99 e 0,5 min de atraso médio do EDF, o resultado é empate e vai para o EDF pela simplicidade.</li>
+<li><b>Limites:</b> dados sintéticos, embalagem determinística (P = 1, M = 2, G = 4 min) e parâmetros dos concorrentes sem a mesma calibração do α.</li>
+</ul>
+
+<h2 class="pb">3. Resultado geral</h2>
+<figure><img src="plots/g1_nota_geral.png"><figcaption>Nota média por estratégia: todas as docas, só especializadas e só gerais.</figcaption></figure>
+<h3>Ranking com todas as docas</h3>
+<table class=""><tr><th>Estratégia</th><th>Nota média</th><th>Vitórias claras</th><th>Empates com EDF</th></tr><tr><td>EDF</td><td>68,8</td><td>20</td><td>2</td></tr><tr><td>Prazo virtual α=0,5</td><td>59,8</td><td>0</td><td>0</td></tr><tr><td>Prazo virtual α=1</td><td>52,4</td><td>0</td><td>0</td></tr><tr><td>Faixas + aging</td><td>51,4</td><td>0</td><td>0</td></tr><tr><td>FIFO</td><td>49,4</td><td>1</td><td>0</td></tr><tr><td>Peso composto</td><td>48,5</td><td>0</td><td>0</td></tr><tr><td>WSPT</td><td>46,9</td><td>0</td><td>0</td></tr><tr><td>Prazo virtual α=2</td><td>44,8</td><td>0</td><td>0</td></tr></table>
+<p><b>Leitura.</b> O EDF lidera nos três recortes. O prazo virtual com α = 0,5 é o segundo colocado, porque se comporta quase como o EDF com um pequeno bônus de score; quanto maior o α, pior a nota, pois aumenta a cauda. FIFO só ganha em um caso isolado, por diferença mínima.</p>
+<figure><img src="plots/g12_sensibilidade.png"><figcaption>Se o VIP pesasse 40% na nota, a ordem muda: Duas filas, WSPT e Faixas + aging passam à frente e o EDF cai para a nota 48,3 (7ª posição). O VIP é o único critério em que o EDF perde; por isso a decisão do grupo de tratá-lo como secundário é o que sustenta a conclusão.</figcaption></figure>
+
+<h2 class="pb">4. Docas especializadas</h2>
+<p>Docas separadas por tamanho de pedido: Express (P), Padrão (M) e Pesada (G).</p>
+<table class=""><tr><th>Cenário</th><th>Especializada (com empréstimo)</th><th>Especializada (sem empréstimo)</th></tr><tr><td>Normal (85%)</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td></tr><tr><td>Pico (105%)</td><td><b>EDF</b><br><small>14,1% atras., P99 18 min</small></td><td><b>EDF</b><br><small>17,7% atras., P99 23 min</small></td></tr><tr><td>Sobrecarga (125%)</td><td><b>EDF</b><br><small>74,4% atras., P99 165 min</small></td><td><b>EDF</b><br><small>74,8% atras., P99 176 min</small></td></tr><tr><td>Black Friday</td><td><b>EDF</b><br><small>34,8% atras., P99 258 min</small></td><td><b>EDF</b><br><small>37,2% atras., P99 257 min</small></td></tr><tr><td>Rajada de G</td><td><b>EDF</b><br><small>11,7% atras., P99 129 min</small></td><td><b>EDF</b><br><small>11,7% atras., P99 128 min</small></td></tr><tr><td>Mix deslocado</td><td>EDF (empate técnico)</td><td>EDF (empate técnico)</td></tr><tr><td>Falha de doca</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td></tr><tr><td>Multi-país</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td></tr></table>
+<figure><img src="plots/g2_heat_especializadas.png"><figcaption>Nota por estratégia e cenário. Verde é melhor. Cenários em que o EDF quase não atrasa (sem o que melhorar) ficam fora da média.</figcaption></figure>
+<h3>Ranking</h3>
+<table class=""><tr><th>Estratégia</th><th>Nota média</th><th>Vitórias claras</th><th>Empates com EDF</th></tr><tr><td>EDF</td><td>65,1</td><td>8</td><td>2</td></tr><tr><td>Prazo virtual α=0,5</td><td>59,2</td><td>0</td><td>0</td></tr><tr><td>Prazo virtual α=1</td><td>56,0</td><td>0</td><td>0</td></tr><tr><td>Faixas + aging</td><td>52,6</td><td>0</td><td>0</td></tr><tr><td>Prazo virtual α=2</td><td>48,5</td><td>0</td><td>0</td></tr><tr><td>Duas filas</td><td>48,0</td><td>0</td><td>0</td></tr><tr><td>Peso composto</td><td>45,1</td><td>0</td><td>0</td></tr><tr><td>Prazo virtual α=3</td><td>45,0</td><td>0</td><td>0</td></tr></table>
+<h3>Comentários</h3>
+<ul>
+<li><b>EDF é o melhor em todos os cenários com atraso,</b> e o prazo virtual com α pequeno é o mais próximo.</li>
+<li><b>O pico é o ponto fraco desse desenho:</b> no pico de 105% o EDF atrasa 14,1% dos pedidos (FIFO: 20,1%), porque as 4 docas Express chegam perto de 95% de uso e viram gargalo. Com docas gerais o mesmo EDF atrasa só 1,6%.</li>
+<li><b>No mix deslocado</b> (mais pedidos grandes), as docas Pesadas saturam e as demais ficam ociosas: 29,7% de atrasados e P99 de 656 min. É o maior risco de dimensionar errado.</li>
+<li><b>Em sobrecarga de 125%,</b> o EDF atrasa 74,4% (FIFO: 73,0%): sem capacidade nenhuma regra resolve, mas o EDF tem a menor cauda (P99 de 165 min). Duas filas mostram 23,1% de atrasados, só que com P99 de 794 min.</li>
+<li><b>O empréstimo de docas ajuda pouco:</b> no pico, 14% de atrasados com empréstimo contra 18% sem.</li>
+</ul>
+
+<h2 class="pb">5. Docas gerais</h2>
+<p>Qualquer doca atende qualquer pedido: uniforme (15 iguais), de capacidade variada (pequenas, médias e grandes) e de velocidade variada.</p>
+<table class=""><tr><th>Cenário</th><th>Geral uniforme</th><th>Geral de capacidade variada</th><th>Geral de velocidade variada</th></tr><tr><td>Normal (85%)</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td></tr><tr><td>Pico (105%)</td><td><b>EDF</b><br><small>1,6% atras., P99 1 min</small></td><td><b>EDF</b><br><small>2,7% atras., P99 2 min</small></td><td><b>EDF</b><br><small>1,7% atras., P99 1 min</small></td></tr><tr><td>Sobrecarga (125%)</td><td><b>EDF</b><br><small>73,9% atras., P99 134 min</small></td><td><b>EDF</b><br><small>73,6% atras., P99 137 min</small></td><td><b>EDF</b><br><small>73,9% atras., P99 134 min</small></td></tr><tr><td>Black Friday</td><td><b>EDF</b><br><small>59,9% atras., P99 100 min</small></td><td><b>EDF</b><br><small>36,1% atras., P99 154 min</small></td><td><b>EDF</b><br><small>59,9% atras., P99 100 min</small></td></tr><tr><td>Rajada de G</td><td>sem atrasos (empate)</td><td><b>FIFO</b><br><small>12,4% atras., P99 78 min</small></td><td>sem atrasos (empate)</td></tr><tr><td>Mix deslocado</td><td><b>EDF</b><br><small>30,5% atras., P99 21 min</small></td><td><b>EDF</b><br><small>27,9% atras., P99 393 min</small></td><td><b>EDF</b><br><small>30,5% atras., P99 21 min</small></td></tr><tr><td>Falha de doca</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td></tr><tr><td>Multi-país</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td><td>sem atrasos (empate)</td></tr></table>
+<figure><img src="plots/g3_heat_gerais.png"><figcaption>Nota por estratégia e cenário, média das três configurações gerais.</figcaption></figure>
+<h3>Ranking</h3>
+<table class=""><tr><th>Estratégia</th><th>Nota média</th><th>Vitórias claras</th><th>Empates com EDF</th></tr><tr><td>EDF</td><td>72,1</td><td>12</td><td>0</td></tr><tr><td>Prazo virtual α=0,5</td><td>60,5</td><td>0</td><td>0</td></tr><tr><td>FIFO</td><td>56,1</td><td>1</td><td>0</td></tr><tr><td>Peso composto</td><td>52,7</td><td>0</td><td>0</td></tr><tr><td>Faixas + aging</td><td>51,0</td><td>0</td><td>0</td></tr><tr><td>WSPT</td><td>49,4</td><td>0</td><td>0</td></tr><tr><td>Prazo virtual α=1</td><td>49,0</td><td>0</td><td>0</td></tr><tr><td>Duas filas</td><td>42,2</td><td>0</td><td>0</td></tr></table>
+<h3>Comentários</h3>
+<ul>
+<li><b>EDF é o melhor em quase todos os cenários.</b> Há exceções pontuais: na rajada de pedidos grandes com docas de capacidade variada o FIFO empata por uma diferença de décimos.</li>
+<li><b>Agrupar a capacidade derruba os atrasos:</b> no pico, 1,6% (uniforme) e 2,7% (capacidade variada); na rajada de pedidos grandes, 0,0% e 12,6%, contra 11,7% das especializadas.</li>
+<li><b>A de velocidade variada se comporta como a uniforme,</b> pois a soma das velocidades é a mesma e a fila é única.</li>
+<li><b>Cuidado:</b> a uniforme e a de velocidade supõem que qualquer doca embala qualquer pedido, o que é otimista. A de capacidade variada respeita a restrição física (pedido G só em doca grande) e é a mais realista das gerais.</li>
+</ul>
+
+<h2 class="pb">6. Black Friday</h2>
+<p>Dia com carga de até 140% da capacidade, mais pedidos grandes (22% do mix) e muitas atualizações de prazo.</p>
+<figure><img src="plots/g5_black_friday.png"><figcaption>Estratégia × configuração de docas na Black Friday.</figcaption></figure>
+<h3>Melhores combinações (docas + estratégia)</h3>
+<table class=""><tr><th>Docas</th><th>Estratégia</th><th>% atrasados</th><th>Atraso médio (min)</th><th>P99 (min)</th><th>% VIP atrasados</th><th>% atrasados P / M / G</th></tr><tr><td>Especializada (com empréstimo)</td><td>EDF</td><td>34,8</td><td>26,0</td><td>258</td><td>43,9</td><td>14,0 / 42,8 / 72,2</td></tr><tr><td>Especializada (com empréstimo)</td><td>Prazo virtual α=0,5</td><td>35,4</td><td>26,3</td><td>259</td><td>36,9</td><td>15,2 / 42,9 / 72,1</td></tr><tr><td>Especializada (com empréstimo)</td><td>Faixas + aging</td><td>30,7</td><td>30,6</td><td>299</td><td>18,7</td><td>16,0 / 31,3 / 67,1</td></tr><tr><td>Geral de capacidade variada</td><td>EDF</td><td>36,1</td><td>32,2</td><td>154</td><td>47,7</td><td>2,9 / 63,0 / 69,8</td></tr><tr><td>Especializada (sem empréstimo)</td><td>Faixas + aging</td><td>31,8</td><td>31,1</td><td>298</td><td>18,7</td><td>17,9 / 31,7 / 67,0</td></tr><tr><td>Geral de capacidade variada</td><td>Prazo virtual α=0,5</td><td>37,2</td><td>32,6</td><td>155</td><td>44,6</td><td>4,9 / 63,4 / 69,7</td></tr></table>
+<figure><img src="plots/g5b_black_friday_tamanho.png"><figcaption>Atrasos do EDF por tamanho de pedido.</figcaption></figure>
+<ul>
+<li><b>Melhor algoritmo: EDF,</b> em todas as cinco configurações de docas.</li>
+<li><b>Com docas especializadas,</b> o EDF atrasa 34,8% dos pedidos, contra 59,9% com docas gerais uniformes. A separação isola o excesso de pedidos grandes: os P ficam com 14,0% de atrasados, contra 59,1% na geral (hipótese apoiada nos atrasos por tamanho, não testada isoladamente).</li>
+<li><b>O preço é a cauda:</b> P99 de 258 min nas especializadas (os pedidos G sofrem, 72,2% atrasados) contra 100 min nas gerais.</li>
+<li><b>Melhor equilíbrio: docas de capacidade variada com EDF</b> (36,1% atrasados e P99 de 154 min): quase o mesmo % de atrasados da especializada, com cauda bem menor.</li>
+<li><b>Ressalva:</b> Faixas + aging atrasa menos pedidos na Black Friday com docas especializadas (30,7% contra 34,8% do EDF), mas com cauda maior (P99 de 299 min contra 258); pelo critério de nota e cauda, o EDF fica à frente.</li>
+<li><b>VIP na Black Friday:</b> o EDF deixa 43,9% dos VIPs atrasados; o prazo virtual com α = 3 reduz para 20,5%, e é a única configuração em que ele atende ao critério do grupo, mas só nesse cenário.</li>
+</ul>
+
+<h2 class="pb">7. Docas especializadas × gerais</h2>
+<figure><img src="plots/g6_docas_edf.png"><figcaption>EDF em cada cenário, por configuração de docas.</figcaption></figure>
+<h3>Ranking das configurações de docas (EDF, média dos cenários com atraso)</h3>
+<table class=""><tr><th>Configuração de docas</th><th>Nota média (EDF)</th><th>Nota média (prazo virtual α=2)</th></tr><tr><td>Geral de velocidade variada</td><td>73,0</td><td>71,1</td></tr><tr><td>Geral uniforme</td><td>67,0</td><td>62,5</td></tr><tr><td>Geral de capacidade variada</td><td>54,2</td><td>58,6</td></tr><tr><td>Especializada (com empréstimo)</td><td>30,0</td><td>32,5</td></tr><tr><td>Especializada (sem empréstimo)</td><td>25,8</td><td>25,4</td></tr></table>
+<p><small>A nota compara as cinco configurações entre si, em cada cenário com atraso. As duas primeiras são idealizadas (qualquer doca atende qualquer pedido); a de capacidade variada é a melhor entre as que respeitam a restrição de tamanho.</small></p>
+<ul>
+<li><b>No pico e nas rajadas, as gerais ganham:</b> o pico cai de 14,1% para 1,6% de atrasados e a rajada de pedidos grandes de 11,7% para 0,0%.</li>
+<li><b>No mix deslocado, a cauda da especializada é muito pior:</b> P99 de 656 min contra 21 min (geral uniforme) e 393 min (capacidade variada).</li>
+<li><b>Na Black Friday a especializada reduz o % de atrasados,</b> à custa da cauda.</li>
+<li><b>Recomendação:</b> usar docas gerais de capacidade variada (a configuração que respeita a restrição física), deixando as docas maiores atenderem pedidos menores.</li>
+</ul>
+<figure><img src="plots/g7_curva_carga.png"><figcaption>Atrasos em função da carga: a diferença entre docas especializadas e gerais aparece a partir de ~100% de carga.</figcaption></figure>
+
+<h2 class="pb">8. EDF × prazo virtual: o custo de proteger VIPs</h2>
+<figure><img src="plots/g8_vip_cauda.png"><figcaption>Cada ponto é uma estratégia; o canto inferior esquerdo é o ideal (poucos VIPs atrasados e cauda curta).</figcaption></figure>
+<figure><img src="plots/g9_alpha.png"><figcaption>Efeito do α: quanto maior, menos VIPs atrasados, mas mais atrasos totais e cauda maior.</figcaption></figure>
+<ul>
+<li><b>No pico (docas especializadas),</b> o prazo virtual com α = 3 reduz os VIPs atrasados de 11,0% para 0,4%, mas o total de atrasados sobe de 14,1% para 20,9% e o P99 de 18 para 76 min.</li>
+<li><b>O bônus de score tira pedidos de score baixo da frente,</b> e esse é o custo de proteger VIPs. Se o VIP pesasse 40% na nota (seção 3), o prazo virtual com α alto passaria a vencer 9 das 23 comparações, sobretudo em sobrecarga e Black Friday, pagando com cauda maior.</li>
+<li>Na calibração com sementes separadas, nenhum α da grade atendeu ao critério (reduzir VIP em 50% sem piorar atrasados em mais de 1 ponto percentual nem o P99 em mais de 20%).</li>
+</ul>
+
+<h2>9. Algoritmos de ordenação (custo)</h2>
+<figure><img src="plots/g10_custo_ordenacao.png"><figcaption>Mesma chave (EDF), mesma ordem de despacho; muda só o custo de manter a fila.</figcaption></figure>
+<ul>
+<li>Em sobrecarga, o <b>heap</b> faz 22 operações por pedido e usa 0,64 s de CPU por execução; Insertion 0,8 s, Selection 2,2 s, Merge 10,3 s e Quick Sort com pivô fixo 113 s (41785 operações por pedido).</li>
+<li>Os cinco algoritmos produzem exatamente os mesmos atrasos (0 divergências), então a escolha é só de custo: o heap.</li>
+</ul>
+
+<h2>10. Robustez: janelas amplas (primeiro experimento)</h2>
+<p>Repetimos a análise com os dados do primeiro experimento (janelas de 30 a 240 min, docas especializadas e uma geral): 10 comparações com atraso, das quais o EDF vence 8; 0 empates técnicos e 12 cenários sem atrasos. A nota média do EDF nessa rodada é 66,9. A conclusão se mantém, mas com janelas amplas 12 dos 22 casos não têm nenhum atraso e vários outros quase não discriminam as estratégias; por isso o segundo experimento usou janelas mais apertadas.</p>
+
+<h2>11. Limitações e próximos passos</h2>
+<ul>
+<li>Dados sintéticos: o score é gerado a partir de SLA, distância, valor e reputação, o que favorece estratégias que usam o score (isso favorece o prazo virtual, e mesmo assim o EDF ganha).</li>
+<li>Os pesos da nota e as tolerâncias de empate são decisões do grupo; a sensibilidade ao peso do VIP está na seção 3.</li>
+<li>A falha de doca é ignorada na configuração de velocidade variada (não há grupo Pesada).</li>
+<li>Os parâmetros de faixas, aging e limite de duas filas não foram calibrados com o mesmo rigor do α.</li>
+<li><b>Próximos passos:</b> testar outras regras de despacho para as docas de capacidade variada (reservar docas grandes para G), variar a quantidade de docas por grupo, e validar em um teste A/B em região piloto.</li>
+</ul>
+</body></html>
