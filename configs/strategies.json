@@ -1,0 +1,18 @@
+{
+  "strategies": [
+    {"id": "fifo", "impl": "fifo", "params": {}},
+    {"id": "edf", "impl": "edf", "params": {}},
+    {"id": "composite", "impl": "composite", "params": {}},
+    {"id": "two_queues", "impl": "two_queues", "params": {"urgent_limit_min": 60}},
+    {"id": "bands_aging", "impl": "bands_aging", "params": {"band_min": 30, "aging_pts_per_min": 0.2}},
+    {"id": "wspt", "impl": "wspt", "params": {}},
+    {"id": "vd_a0", "impl": "virtual_deadline", "params": {"alpha": 0}},
+    {"id": "vd_a0.5", "impl": "virtual_deadline", "params": {"alpha": 0.5}},
+    {"id": "vd_a1", "impl": "virtual_deadline", "params": {"alpha": 1}},
+    {"id": "vd_a2", "impl": "virtual_deadline", "params": {"alpha": 2}},
+    {"id": "vd_a3", "impl": "virtual_deadline", "params": {"alpha": 3}},
+    {"id": "vd_a5", "impl": "virtual_deadline", "params": {"alpha": 5}}
+  ],
+  "finalists": ["edf", "vd_a1", "vd_a2", "vd_a3"],
+  "baseline": "fifo"
+}

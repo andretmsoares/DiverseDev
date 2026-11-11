@@ -1,0 +1,39 @@
+{
+  "pack_min": {"P": 1, "M": 2, "G": 4},
+  "configs": {
+    "base_15": {
+      "description": "Centro de distribuicao regional: 4 Express, 6 Padrao, 5 Pesada; emprestimo de mao unica",
+      "classes": [
+        {"name": "express", "sizes": ["P"], "count": 4},
+        {"name": "padrao", "sizes": ["M"], "count": 6},
+        {"name": "pesada", "sizes": ["G"], "count": 5}
+      ],
+      "borrow": "one_way"
+    },
+    "base_15_no_borrow": {
+      "description": "Mesmas docas do base_15, sem emprestimo",
+      "classes": [
+        {"name": "express", "sizes": ["P"], "count": 4},
+        {"name": "padrao", "sizes": ["M"], "count": 6},
+        {"name": "pesada", "sizes": ["G"], "count": 5}
+      ],
+      "borrow": "none"
+    },
+    "mini_8": {
+      "description": "Cenario mini para depuracao e diagrama: 2/3/3",
+      "classes": [
+        {"name": "express", "sizes": ["P"], "count": 2},
+        {"name": "padrao", "sizes": ["M"], "count": 3},
+        {"name": "pesada", "sizes": ["G"], "count": 3}
+      ],
+      "borrow": "one_way"
+    },
+    "generic_15": {
+      "description": "Baseline: 15 docas genericas, uma unica fila",
+      "classes": [
+        {"name": "generica", "sizes": ["P", "M", "G"], "count": 15}
+      ],
+      "borrow": "none"
+    }
+  }
+}
