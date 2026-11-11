@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import json
 import os
 import shutil
@@ -29,10 +30,10 @@ class Gen(object):
     cache = {}
 
     @classmethod
-    def get(cls, sid, seed=0):
-        key = (sid, seed)
+    def get(cls, sid, seed=0, profile="wide"):
+        key = (sid, seed, profile)
         if key not in cls.cache:
-            sc = C.resolve_scenario(CFG, sid)
+            sc = C.resolve_scenario(CFG, sid, profile)
             o = G.generate_orders(sc, seed)
             e = G.generate_events(sc, o, seed)
             cls.cache[key] = (sc, o, e)
@@ -68,10 +69,15 @@ class TestCatalog(unittest.TestCase):
 SCENARIOS_FAST = ["normal_85", "peak_105", "black_friday", "mix_shift_33", "regional_mix", "promo_g_burst"]
 
 
-class TestOrders(unittest.TestCase):
+class OrdersMixin(object):
+    P = "wide"
+
+    def g(self, sid, seed=0):
+        return Gen.get(sid, seed, self.P)
+
     def test_invariants(self):
         for sid in SCENARIOS_FAST:
-            sc, orders, _ = Gen.get(sid)
+            sc, orders, _ = self.g(sid)
             self.assertGreater(len(orders), 1000)
             prev = -1.0
             ids = set()
@@ -80,7 +86,7 @@ class TestOrders(unittest.TestCase):
                 prev = o["arrival_min"]
                 self.assertLess(o["arrival_min"], sc["duration_min"])
                 self.assertGreaterEqual(o["dispatch_window_min"], 30.0)
-                self.assertLessEqual(o["dispatch_window_min"], 240.0)
+                self.assertLessEqual(o["dispatch_window_min"], 120.0 if self.P == "tight" else 240.0)
                 self.assertAlmostEqual(o["deadline_min"], o["arrival_min"] + o["dispatch_window_min"], delta=0.002)
                 self.assertTrue(0.0 <= o["priority_score"] <= 100.0)
                 self.assertIn(o["size_category"], ("P", "M", "G"))
@@ -90,52 +96,52 @@ class TestOrders(unittest.TestCase):
 
     def test_vip_fraction(self):
         for sid in SCENARIOS_FAST + ["overload_125", "sweep_70"]:
-            _, orders, _ = Gen.get(sid)
+            _, orders, _ = self.g(sid)
             f = sum(1 for o in orders if o["priority_score"] >= 70.0) / float(len(orders))
             self.assertTrue(0.15 <= f <= 0.30, "%s VIP=%.3f" % (sid, f))
 
     def test_size_mix_matches_manifest(self):
         for sid in SCENARIOS_FAST:
-            sc, orders, _ = Gen.get(sid)
+            sc, orders, _ = self.g(sid)
             exp = G.expected_size_mix(sc)
             for s in "PMG":
                 obs = sum(1 for o in orders if o["size_category"] == s) / float(len(orders))
                 self.assertAlmostEqual(obs, exp[s], delta=0.03, msg="%s %s" % (sid, s))
 
     def test_special_mixes(self):
-        sc, _, _ = Gen.get("black_friday")
+        sc, _, _ = self.g("black_friday")
         self.assertGreater(G.expected_size_mix(sc)["G"], 0.17)
-        _, orders, _ = Gen.get("promo_g_burst")
+        _, orders, _ = self.g("promo_g_burst")
         win = [o for o in orders if 360 <= o["arrival_min"] < 480]
         g = sum(1 for o in win if o["size_category"] == "G") / float(len(win))
         self.assertAlmostEqual(g, 0.40, delta=0.07)
-        _, orders, _ = Gen.get("mix_shift_33")
+        _, orders, _ = self.g("mix_shift_33")
         g = sum(1 for o in orders if o["size_category"] == "G") / float(len(orders))
         self.assertAlmostEqual(g, 0.33, delta=0.03)
 
     def test_mean_rate_near_target(self):
         for sid in ["normal_85", "peak_105", "overload_125", "black_friday", "regional_mix", "sweep_70"]:
-            sc, orders, _ = Gen.get(sid)
+            sc, orders, _ = self.g(sid)
             rate = len(orders) / (sc["duration_min"] / 60.0)
             self.assertAlmostEqual(rate / sc["base_rate_per_h"], 1.0, delta=0.05, msg=sid)
-        sc, orders, _ = Gen.get("peak_105")
+        sc, orders, _ = self.g("peak_105")
         self.assertEqual(sc["base_rate_per_h"], 504.0)
 
     def test_daily_profile_has_valleys_and_peaks(self):
-        sc, _, _ = Gen.get("normal_85")
+        sc, _, _ = self.g("normal_85")
         names, per = G.rate_curves(sc)
         hourly = [sum(per[n][k] for n in names) * 60 for k in range(0, 960, 60)]
         self.assertGreater(max(hourly) / min(hourly), 1.8)
 
     def test_black_friday_plateau(self):
-        sc, _, _ = Gen.get("black_friday")
+        sc, _, _ = self.g("black_friday")
         names, per = G.rate_curves(sc)
         plateau = [sum(per[n][k] for n in names) * 60 for k in range(360, 600)]
         avg = sum(plateau) / len(plateau) / 480.0
         self.assertTrue(1.3 <= avg <= 1.5, avg)
 
     def test_regional_mix(self):
-        sc, orders, _ = Gen.get("regional_mix")
+        sc, orders, _ = self.g("regional_mix")
         cnt = {}
         for o in orders:
             cnt[o["region"]] = cnt.get(o["region"], 0) + 1
@@ -145,19 +151,26 @@ class TestOrders(unittest.TestCase):
         for r in cnt:
             ws = [o["dispatch_window_min"] for o in orders if o["region"] == r]
             mean_w[r] = sum(ws) / len(ws)
-        self.assertLess(mean_w["AR"], mean_w["MX"])  # AR tem SLA mais apertado
+        if self.P == "tight":
+            self.assertLess(mean_w["MX"], mean_w["AR"])  # tight: MX curtas, AR longas
+        else:
+            self.assertLess(mean_w["AR"], mean_w["MX"])  # wide: AR tem SLA mais apertado
 
     def test_tight_sla_gives_shorter_windows(self):
-        _, orders, _ = Gen.get("regional_mix")
+        _, orders, _ = self.g("regional_mix")
         by = {}
         for o in orders:
             by.setdefault(o["sla_min"], []).append(o["dispatch_window_min"])
         keys = sorted(by)
         means = [sum(by[k]) / len(by[k]) for k in keys]
-        self.assertEqual(means, sorted(means))
+        if self.P == "wide":
+            self.assertEqual(means, sorted(means))
+        else:  # truncacao em 120 min achata as faixas altas; exige ordem nas 4 primeiras
+            self.assertEqual(means[:4], sorted(means[:4]))
+            self.assertLess(means[0], means[-1])
 
     def test_value_correlates_with_size(self):
-        _, orders, _ = Gen.get("normal_85")
+        _, orders, _ = self.g("normal_85")
         med = {}
         for s in "PMG":
             v = sorted(o["value_brl"] for o in orders if o["size_category"] == s)
@@ -166,15 +179,21 @@ class TestOrders(unittest.TestCase):
         self.assertLess(med["M"], med["G"])
 
     def test_score_from_components(self):
-        _, orders, _ = Gen.get("normal_85")
+        sc, orders, _ = self.g("normal_85")
         for o in orders[:200]:
-            s = G.compute_score(o["dispatch_window_min"], o["distance_km"], o["value_brl"], o["seller_reputation"])
+            s = G.compute_score(o["dispatch_window_min"], o["distance_km"], o["value_brl"], o["seller_reputation"],
+                                sc["win_lo"], sc["win_hi"], sc["sla_gamma"])
             self.assertAlmostEqual(s, o["priority_score"], delta=0.5)
 
 
-class TestEvents(unittest.TestCase):
+class EventsMixin(object):
+    P = "wide"
+
+    def g(self, sid, seed=0):
+        return Gen.get(sid, seed, self.P)
+
     def test_event_rates_and_ranges(self):
-        sc, orders, events = Gen.get("normal_85")
+        sc, orders, events = self.g("normal_85")
         by = dict((o["order_id"], o) for o in orders)
         n = float(len(orders))
         ups = [e for e in events if e[3] == "update"]
@@ -191,16 +210,85 @@ class TestEvents(unittest.TestCase):
                 self.assertTrue(ns is not None or nd is not None)
                 if nd is not None:
                     self.assertGreater(nd, t)
+                    if self.P == "tight":
+                        self.assertTrue(30.0 - 0.002 <= nd - t <= 120.0 + 0.002)
                 if ns is not None:
                     self.assertTrue(0 <= ns <= 100)
         self.assertEqual(len(set(e[0] for e in events)), len(events))
 
     def test_black_friday_more_updates(self):
-        _, o1, e1 = Gen.get("black_friday")
-        _, o2, e2 = Gen.get("normal_85")
+        _, o1, e1 = self.g("black_friday")
+        _, o2, e2 = self.g("normal_85")
         r1 = sum(1 for e in e1 if e[3] == "update") / float(len(o1))
         r2 = sum(1 for e in e2 if e[3] == "update") / float(len(o2))
         self.assertGreater(r1, r2 * 1.4)
+
+
+class TestOrdersWide(OrdersMixin, unittest.TestCase):
+    P = "wide"
+
+
+class TestOrdersTight(OrdersMixin, unittest.TestCase):
+    P = "tight"
+
+    def test_tight_window_distribution(self):
+        for sid in ("normal_85", "regional_mix"):
+            _, orders, _ = self.g(sid)
+            w = sorted(o["dispatch_window_min"] for o in orders)
+            self.assertTrue(48.0 <= w[len(w) // 2] <= 62.0, w[len(w) // 2])
+            self.assertLess(w[-1], 120.001)
+        _, orders, _ = self.g("regional_mix")
+        med = {}
+        for r in ("MX", "BR", "AR"):
+            v = sorted(o["dispatch_window_min"] for o in orders if o["region"] == r)
+            med[r] = v[len(v) // 2]
+        self.assertLess(med["MX"], med["BR"])
+        self.assertLess(med["BR"], med["AR"])
+
+    def test_tight_differs_from_wide(self):
+        _, a, _ = Gen.get("normal_85", 0, "wide")
+        _, b, _ = Gen.get("normal_85", 0, "tight")
+        self.assertEqual(len(a) > 0, True)
+        self.assertLess(sum(o["dispatch_window_min"] for o in b) / len(b),
+                        0.6 * sum(o["dispatch_window_min"] for o in a) / len(a))
+
+
+class TestEventsWide(EventsMixin, unittest.TestCase):
+    P = "wide"
+
+
+class TestEventsTight(EventsMixin, unittest.TestCase):
+    P = "tight"
+
+
+class TestWideRegression(unittest.TestCase):
+    """O perfil wide (padrao) deve gerar exatamente os mesmos bytes da v0.1.0."""
+
+    def test_hash_normal_85_seed0(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            cli.main(["--scenarios", "normal_85", "--seeds", "0", "--out", tmp])
+            base = os.path.join(tmp, "normal_85", "seed_0")
+            got = {}
+            for name in ("orders.csv", "events.csv"):
+                with open(os.path.join(base, name), "rb") as f:
+                    got[name] = hashlib.sha256(f.read()).hexdigest()
+            self.assertEqual(got["orders.csv"], "ae85eb66ed815a5b776a83c2bcb371ce5694f4148341a349aa023bd0903ef79e")
+            self.assertEqual(got["events.csv"], "71ea9bc8bfb97b96064ff85188b81c0389c39d845c56080ea31efe02588dac8d")
+            man = load_json(os.path.join(tmp, "normal_85", "manifest.json"))
+            self.assertEqual(man["window_profile"], "wide")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_tight_manifest_and_cli(self):
+        tmp = tempfile.mkdtemp()
+        try:
+            cli.main(["--scenarios", "normal_85", "--seeds", "0", "--window-profile", "tight", "--out", tmp])
+            man = load_json(os.path.join(tmp, "normal_85", "manifest.json"))
+            self.assertEqual(man["window_profile"], "tight")
+            self.assertEqual(man["window_bounds_min"], [30.0, 120.0])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
 
 class TestFilesAndDeterminism(unittest.TestCase):
