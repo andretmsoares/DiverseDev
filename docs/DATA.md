@@ -42,6 +42,19 @@ Parametros em `configs/scenarios.json` (defaults, perfis, regioes, cenarios).
 - **priority_score** = 0.40 SLA + 0.20 distancia + 0.25 valor + 0.15 reputacao, cada componente em 0-100: SLA = (240-janela)/210; distancia e valor por log entre 10 e 1500 (km / BRL); reputacao = beta(a,b) x 100. Distancias maiores = maior prioridade (premissa nossa: exigem despacho mais cedo). Resultado: VIP (>=70) ~19-22% na maioria dos cenarios e ~26% em `mix_shift_33` (mais G, itens caros).
 - **Eventos:** 3% dos pedidos com `update` (score e/ou prazo; prazo novo > tempo do evento) e 2% com `cancel`, mutuamente exclusivos; `time_min` uniforme dentro de [chegada, prazo original].
 
+## Perfil de janelas: `--window-profile wide|tight`
+
+- `wide` (padrao): janelas 30-240 min, exatamente os mesmos bytes de orders/events da v0.1.0 (teste de regressao por hash).
+- `tight`: janelas log-normais truncadas em **30-120 min**, mediana ~55 min (por regiao: MX ~48, CL ~50, BR ~54, CO ~59, AR ~66), SLA apertado => janela curta. Mantem taxa, mix, perfil diario e eventos; a unica mudanca nos pedidos e a janela (e, por consequencia, deadline e score).
+  - Componente SLA do score: `100 * ((120 - janela)/90) ** 1.8`. O expoente (>1) evita que janelas curtas inflem o % VIP (sem ele ~33%); com ele fica ~19-27%.
+  - Regioes: parametros em `regions.<R>.tight` de `configs/scenarios.json` (MX mais curtas, AR mais longas e mais ruidosas).
+  - Eventos `update` de prazo: o novo prazo fica a 30-120 min do instante do evento (`new_deadline_min - time_min` em [30, 120]).
+- O manifest registra `window_profile` e `window_bounds_min`. Use `--out data/synthetic_tight` para nao misturar com os dados `wide`.
+
+```
+python -m mps.datagen --scenarios all --seeds 0-29 --window-profile tight --out data/synthetic_tight
+```
+
 ## Limitacoes conhecidas
 
 - Taxa observada varia ~2-3% em torno da meta por seed (Poisson); a media de varias seeds converge.
