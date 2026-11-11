@@ -228,6 +228,8 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
             o = pool[ai]
             ai += 1
             res.n_arrivals += 1
+            if o.size not in size_to_q:
+                raise ValueError("nenhuma doca aceita o tamanho %r (pedido %s)" % (o.size, o.order_id))
             ci = size_to_q[o.size]
             queues[ci].q.push(o, now)
             state[o.order_id] = "q"
