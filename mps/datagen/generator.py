@@ -141,18 +141,18 @@ def _pick_tier(tiers, u):
     return float(tiers[-1][0])
 
 
-def _window(rng, sla, frac, sigma):
+def _window(rng, sla, frac, sigma, lo=WIN_MIN, hi=WIN_MAX):
     mu = math.log(sla * frac)
     for _ in range(50):
         w = math.exp(rng.gauss(mu, sigma))
-        if WIN_MIN <= w <= WIN_MAX:
+        if lo <= w <= hi:
             return w
-    return _clip(math.exp(mu), WIN_MIN, WIN_MAX)
+    return _clip(math.exp(mu), lo, hi)
 
 
-def compute_score(window, distance, value, rep):
+def compute_score(window, distance, value, rep, win_lo=WIN_MIN, win_hi=WIN_MAX, sla_gamma=1.0):
     """Componentes normalizados 0-100 e score ponderado (40/20/25/15)."""
-    c_sla = 100.0 * (WIN_MAX - window) / (WIN_MAX - WIN_MIN)
+    c_sla = 100.0 * ((win_hi - window) / (win_hi - win_lo)) ** sla_gamma
     c_dist = 100.0 * _clip(math.log(distance / DIST_LO) / math.log(DIST_HI / DIST_LO), 0.0, 1.0)
     c_val = 100.0 * _clip(math.log(value / VALUE_LO) / math.log(VALUE_HI / VALUE_LO), 0.0, 1.0)
     c_rep = _clip(rep, 0.0, 100.0)
@@ -197,13 +197,14 @@ def _make_order(rng, sc, region, t, idx):
     eps = rng.gauss(0.0, 1.0)
     u_sla = _phi(-(LATENT_RHO * z + math.sqrt(1 - LATENT_RHO ** 2) * eps))  # premium -> SLA mais apertado
     sla = _pick_tier(r["sla_tiers"], u_sla)
-    window = _window(rng, sla, r["window_median_frac"], r["window_sigma"])
+    wlo, whi = sc.get("win_lo", WIN_MIN), sc.get("win_hi", WIN_MAX)
+    window = _window(rng, sla, r["window_median_frac"], r["window_sigma"], wlo, whi)
     distance = r["distance_median_km"] * math.exp(rng.gauss(0.0, DIST_SIGMA) + 0.3 * z)
     value = (VALUE_MEDIAN[size] * r["value_scale"]
              * math.exp(rng.gauss(0.0, VALUE_SIGMA) + 0.35 * z))
     a, b = r["rep_beta"]
     rep = 100.0 * rng.betavariate(a, b)
-    score = compute_score(window, distance, value, rep)
+    score = compute_score(window, distance, value, rep, wlo, whi, sc.get("sla_gamma", 1.0))
     arr = round(t, 3)
     win = round(window, 3)
     return {
@@ -242,7 +243,11 @@ def generate_events(sc, orders, seed):
                 new_score = round(_clip(o["priority_score"] + rng.gauss(0.0, 15.0), 0.0, 100.0), 2)
             if change_dl:
                 delta = rng.uniform(-0.4, 0.5) * o["dispatch_window_min"]
-                new_dl = round(max(o["deadline_min"] + delta, tm + 5.0), 3)
+                new_dl = max(o["deadline_min"] + delta, tm + 5.0)
+                if sc.get("win_hi", WIN_MAX) < WIN_MAX:
+                    # perfil apertado: prazo novo a [lo, hi] min do instante do evento
+                    new_dl = tm + _clip(new_dl - tm, sc["win_lo"], sc["win_hi"])
+                new_dl = round(new_dl, 3)
             evs.append((tm, o["order_id"], "update", new_score, new_dl))
     evs.sort(key=lambda e: (e[0], e[1]))
     return [("E%06d" % (i + 1),) + e for i, e in enumerate(evs)]

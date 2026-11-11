@@ -67,6 +67,8 @@ def build_manifest(sc, seeds, stats, previous=None):
         "dock_config": sc["dock_config"],
         "outages": sc["outages"],
         "warmup_min": sc["warmup_min"],
+        "window_profile": sc["window_profile"],
+        "window_bounds_min": [sc["win_lo"], sc["win_hi"]],
         "update_prob": sc["update_prob"],
         "cancel_prob": sc["cancel_prob"],
         "notes": sc.get("notes", ""),
@@ -93,6 +95,8 @@ def main(argv=None):
     p.add_argument("--seeds", default=None, help="ex.: 0-29 ou 0,5,9 (padrao 0-29)")
     p.add_argument("--out", default="data/synthetic")
     p.add_argument("--calibration", action="store_true", help="usa as seeds de calibracao 1000-1009")
+    p.add_argument("--window-profile", choices=sorted(cfgmod.WINDOW_PROFILES), default="wide",
+                   help="wide: janelas 30-240 min (padrao); tight: 30-120 min, mediana ~55")
     p.add_argument("--config", default=None, help="caminho alternativo de scenarios.json")
     a = p.parse_args(argv)
 
@@ -113,7 +117,7 @@ def main(argv=None):
             p.error("cenario desconhecido: %s" % sid)
 
     for sid in ids:
-        sc = cfgmod.resolve_scenario(cfg, sid)
+        sc = cfgmod.resolve_scenario(cfg, sid, a.window_profile)
         stats = {}
         for s in seeds:
             stats[s] = write_seed(sc, s, a.out)

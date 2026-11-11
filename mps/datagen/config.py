@@ -6,6 +6,8 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 DEFAULT_CONFIG = os.path.join(ROOT, "configs", "scenarios.json")
 
+WINDOW_PROFILES = {"wide": (30.0, 240.0), "tight": (30.0, 120.0)}
+TIGHT_SLA_GAMMA = 1.8
 EVAL_SEEDS = tuple(range(0, 30))
 CALIB_SEEDS = tuple(range(1000, 1010))
 
@@ -19,7 +21,7 @@ def scenario_ids(cfg):
     return list(cfg["scenarios"].keys())
 
 
-def resolve_scenario(cfg, scenario_id):
+def resolve_scenario(cfg, scenario_id, window_profile="wide"):
     """Retorna dict completo do cenario (defaults aplicados, regioes e perfil resolvidos)."""
     if scenario_id not in cfg["scenarios"]:
         raise KeyError("cenario desconhecido: %s" % scenario_id)
@@ -30,11 +32,20 @@ def resolve_scenario(cfg, scenario_id):
     for name, over in sc["regions"].items():
         r = copy.deepcopy(cfg["regions"][name])
         r.update(over)
+        if window_profile == "tight":
+            r.update(r.get("tight", {}))
+        r.pop("tight", None)
         regions[name] = r
     tot = sum(r["share"] for r in regions.values())
     for r in regions.values():
         r["share"] = r["share"] / tot
     sc["regions"] = regions
+    if window_profile not in WINDOW_PROFILES:
+        raise ValueError("window_profile invalido: %s" % window_profile)
+    sc["window_profile"] = window_profile
+    sc["win_lo"], sc["win_hi"] = WINDOW_PROFILES[window_profile]
+    # janelas curtas elevam o componente SLA; gamma>1 mantem o % VIP comparavel ao perfil wide
+    sc["sla_gamma"] = TIGHT_SLA_GAMMA if window_profile == "tight" else 1.0
     sc["profile_def"] = cfg["profiles"][sc["profile"]]
     return sc
 
