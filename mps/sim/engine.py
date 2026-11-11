@@ -92,7 +92,12 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
             if cl.name == ou["class"]:
                 ci = i
         if ci is None:
-            raise ValueError("outage em classe desconhecida: %r" % (ou["class"],))
+            # config sem essa classe: com uma unica classe a falha vale para ela;
+            # senao e ignorada (documentado em docs/STRATEGIES.md)
+            if ncls == 1:
+                ci = 0
+            else:
+                continue
         counter += 1
         heap.append((ou["start_min"], P_OUT_START, counter, "os", (ci, int(ou["count"]))))
         counter += 1
@@ -220,7 +225,14 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
                         if ev.new_score is not None or ev.new_deadline_min is not None:
                             classes[ci].queue.update(ev.order_id, now, ev.new_score,
                                                      ev.new_deadline_min)
-        dispatch()
+        # despacha so depois de aplicar TODOS os eventos do mesmo instante
+        nxt = inf
+        if ai < n:
+            nxt = pool[ai].arrival_min
+        if heap and heap[0][0] < nxt:
+            nxt = heap[0][0]
+        if nxt > now:
+            dispatch()
         if now >= warmup_min:
             for c in classes:
                 ql = len(c.queue)
