@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 from mps.sim import loader, metrics
+from mps.sim.docks import names as dock_names
 from mps.sim.engine import simulate
 from mps.strategies import BACKEND_NAMES, STATIC_IMPLS
 
@@ -50,13 +51,14 @@ def run_task(task):
         row.update(metrics.compute_metrics(res))
         runs.append(row)
         if collect:
-            names = res.class_names
+            qn, gn = res.queue_names, res.group_names
             for srow in res.series:
                 d = {"scenario_id": task["scenario"], "dock_config": task["dock_id"],
                      "strategy_id": st["id"], "seed": task["seed"], "time_min": srow[0]}
-                for i, nm in enumerate(names):
+                for i, nm in enumerate(qn):
                     d["queue_" + nm] = srow[1 + i]
-                    d["busy_" + nm] = srow[1 + len(names) + i]
+                for i, nm in enumerate(gn):
+                    d["busy_" + nm] = srow[1 + len(qn) + i]
                 series.append(d)
             for o, s, comp in res.records:
                 delays.append({"scenario_id": task["scenario"], "dock_config": task["dock_id"],
@@ -152,18 +154,18 @@ def run_all(data, out, scenarios, strategy_ids, dock_ids, seeds, workers=1,
                                r["time_min"]))
     delays.sort(key=lambda r: (r["scenario_id"], r["dock_config"], order_idx[r["strategy_id"]]))
 
-    names = []
+    gnames, qnames = [], []
     for d in dock_ids:
-        for c in docks[d]["classes"]:
-            if c["name"] not in names:
-                names.append(c["name"])
+        gn, qn = dock_names(docks[d])
+        gnames.extend(x for x in gn if x not in gnames)
+        qnames.extend(x for x in qn if x not in qnames)
     os.makedirs(out, exist_ok=True)
     prefix = "calibration_" if calibration else ""
     _write_csv(os.path.join(out, prefix + "runs.csv"),
-               IDENT_COLS + metrics.column_names(names), runs)
+               IDENT_COLS + metrics.column_names(gnames, qnames), runs)
     _write_csv(os.path.join(out, prefix + "queue_timeseries.csv"),
                ["scenario_id", "dock_config", "strategy_id", "seed", "time_min"] +
-               ["queue_" + n for n in names] + ["busy_" + n for n in names], series)
+               ["queue_" + n for n in qnames] + ["busy_" + n for n in gnames], series)
     _write_csv(os.path.join(out, prefix + "delays_seed0.csv"),
                ["scenario_id", "dock_config", "strategy_id", "order_id", "size_category",
                 "is_vip", "delay_min", "wait_min"], delays)
