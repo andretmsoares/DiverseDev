@@ -4,6 +4,7 @@ Heap com mapa id -> posicao: push/pop/update/cancel em O(log n), peek(k) em
 O(k log k).
 """
 from mps.strategies._heap import IndexedHeap
+from mps.strategies.backends import BACKENDS
 from mps.strategies.base import Strategy
 
 
@@ -25,9 +26,15 @@ class OpsMixin(object):
 class StaticHeapStrategy(OpsMixin, Strategy):
     name = "static"
 
-    def __init__(self, **params):
+    def __init__(self, backend="heap", **params):
         Strategy.__init__(self, **params)
-        self._heap = IndexedHeap(self._cnt)
+        self.backend = backend
+        if backend == "heap":
+            self._heap = IndexedHeap(self._cnt)
+        elif backend in BACKENDS:
+            self._heap = BACKENDS[backend](self._cnt)
+        else:
+            raise ValueError("backend desconhecido: %r" % (backend,))
 
     def _keyfn(self, order):
         raise NotImplementedError

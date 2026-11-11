@@ -16,11 +16,19 @@ REGISTRY = {
 }
 
 
-def make_strategy(impl, **params):
+STATIC_IMPLS = ("fifo", "edf", "wspt", "virtual_deadline")
+BACKEND_NAMES = ("heap", "insertion", "selection", "merge", "quick")
+
+
+def make_strategy(impl, backend="heap", **params):
     try:
         cls = REGISTRY[impl]
     except KeyError:
         raise ValueError("estrategia desconhecida: %r (validas: %s)" % (impl, sorted(REGISTRY)))
+    if backend != "heap":
+        if impl not in STATIC_IMPLS:
+            raise ValueError("backend %r so existe para %s" % (backend, STATIC_IMPLS))
+        params["backend"] = backend
     return cls(**params)
 
 
