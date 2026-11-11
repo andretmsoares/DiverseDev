@@ -62,3 +62,9 @@ def load_strategies(path=None):
 
 def scenario_warmup(manifest):
     return float(manifest.get("warmup_min", WARMUP_MIN))
+
+
+def load_strategy_config(path=None):
+    path = path or os.path.join(ROOT, "configs", "strategies.json")
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)

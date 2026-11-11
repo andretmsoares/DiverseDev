@@ -10,10 +10,11 @@ import sys
 
 from mps.sim import loader, metrics
 from mps.sim.engine import simulate
+from mps.strategies import BACKEND_NAMES, STATIC_IMPLS
 
 SAMPLE_DT = 5.0
 
-IDENT_COLS = ["scenario_id", "dock_config", "strategy_id", "impl", "alpha", "seed"]
+IDENT_COLS = ["scenario_id", "dock_config", "strategy_id", "backend", "impl", "alpha", "seed"]
 
 
 def parse_seeds(text):
@@ -38,13 +39,13 @@ def run_task(task):
     orders = loader.load_orders(os.path.join(seed_dir, "orders.csv"))
     events = loader.load_events(os.path.join(seed_dir, "events.csv"))
     runs, series, delays = [], [], []
-    collect = task["seed"] == 0
-    for st in task["strategies"]:
+    for backend, st in task["strategies"]:
+        collect = task["seed"] == 0 and backend == "heap"
         res = simulate(orders, events, task["dock_cfg"], st["impl"], st.get("params") or {},
                        outages=task["outages"], warmup_min=task["warmup"],
-                       sample_dt=SAMPLE_DT if collect else None)
+                       sample_dt=SAMPLE_DT if collect else None, backend=backend)
         row = {"scenario_id": task["scenario"], "dock_config": task["dock_id"],
-               "strategy_id": st["id"], "impl": st["impl"],
+               "strategy_id": st["id"], "backend": backend, "impl": st["impl"],
                "alpha": (st.get("params") or {}).get("alpha", ""), "seed": task["seed"]}
         row.update(metrics.compute_metrics(res))
         runs.append(row)
@@ -84,7 +85,7 @@ def _write_csv(path, cols, rows):
 
 
 def run_all(data, out, scenarios, strategy_ids, dock_ids, seeds, workers=1,
-            calibration=False, argv=None, log=print):
+            calibration=False, backends=("heap",), argv=None, log=print):
     docks = loader.load_dock_configs()
     all_strats = loader.load_strategies()
     by_id = dict((s["id"], s) for s in all_strats)
@@ -96,6 +97,18 @@ def run_all(data, out, scenarios, strategy_ids, dock_ids, seeds, workers=1,
             if sid not in by_id:
                 raise SystemExit("estrategia desconhecida: %s" % sid)
             strats.append(by_id[sid])
+    cfg = loader.load_strategy_config()
+    bs_ids = cfg.get("backend_strategies", ["edf", "vd_a1"])
+    pairs = []  # (backend, estrategia)
+    for b in backends:
+        if b not in BACKEND_NAMES:
+            raise SystemExit("backend desconhecido: %s" % b)
+        if b == "heap":
+            pairs.extend((b, s) for s in strats)
+        else:
+            for s in strats:
+                if s["impl"] in STATIC_IMPLS and (strategy_ids != "all" or s["id"] in bs_ids):
+                    pairs.append((b, s))
     if scenarios == "all":
         scenarios = sorted(d for d in os.listdir(data)
                            if os.path.isdir(os.path.join(data, d)) and
@@ -113,10 +126,10 @@ def run_all(data, out, scenarios, strategy_ids, dock_ids, seeds, workers=1,
                     log("aviso: sem dados para %s seed %d (ignorado)" % (sc, seed))
                     continue
                 tasks.append({"data": data, "scenario": sc, "dock_id": d, "seed": seed,
-                              "dock_cfg": docks[d], "strategies": strats,
+                              "dock_cfg": docks[d], "strategies": pairs,
                               "outages": man.get("outages") or [],
                               "warmup": loader.scenario_warmup(man)})
-    log("%d tarefas x %d estrategias" % (len(tasks), len(strats)))
+    log("%d tarefas x %d estrategias" % (len(tasks), len(pairs)))
     if workers > 1 and len(tasks) > 1:
         pool = multiprocessing.Pool(workers)
         try:
@@ -128,11 +141,12 @@ def run_all(data, out, scenarios, strategy_ids, dock_ids, seeds, workers=1,
         results = [run_task(t) for t in tasks]
 
     order_idx = dict((s["id"], i) for i, s in enumerate(strats))
+    bidx = dict((b, i) for i, b in enumerate(backends))
     runs = [r for res in results for r in res[0]]
     series = [r for res in results for r in res[1]]
     delays = [r for res in results for r in res[2]]
     sort_key = lambda r: (r["scenario_id"], r["dock_config"], order_idx[r["strategy_id"]],
-                          r.get("seed", 0))
+                          bidx[r["backend"]], r.get("seed", 0))
     runs.sort(key=sort_key)
     series.sort(key=lambda r: (r["scenario_id"], r["dock_config"], order_idx[r["strategy_id"]],
                                r["time_min"]))
@@ -157,7 +171,7 @@ def run_all(data, out, scenarios, strategy_ids, dock_ids, seeds, workers=1,
             "datetime": datetime.datetime.now().isoformat(),
             "command": " ".join(argv if argv is not None else sys.argv),
             "git_commit": _git_commit(), "scenarios": scenarios,
-            "strategies": [s["id"] for s in strats], "dock_configs": dock_ids,
+            "strategies": [s["id"] for s in strats], "backends": list(backends), "dock_configs": dock_ids,
             "seeds": seeds, "calibration": calibration, "n_runs": len(runs),
             "workers": workers}
     with open(os.path.join(out, prefix + "runs.meta.json"), "w", encoding="utf-8") as f:

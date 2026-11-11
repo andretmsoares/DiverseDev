@@ -14,5 +14,7 @@
     {"id": "vd_a5", "impl": "virtual_deadline", "params": {"alpha": 5}}
   ],
   "finalists": ["edf", "vd_a1", "vd_a2", "vd_a3"],
-  "baseline": "fifo"
+  "baseline": "fifo",
+  "backends": ["heap", "insertion", "selection", "merge", "quick"],
+  "backend_strategies": ["edf", "vd_a1"]
 }

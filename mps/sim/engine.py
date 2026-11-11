@@ -1,6 +1,5 @@
 """Simulador de eventos discretos (ver docs/CONTRACT.md, secoes 4 e 6)."""
 import heapq
-import math
 import time
 
 from mps.models import PACK_MIN, WARMUP_MIN, Order
@@ -52,7 +51,7 @@ def _fresh(o):
 
 
 def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
-             warmup_min=WARMUP_MIN, borrow=None, sample_dt=None, trace=False):
+             warmup_min=WARMUP_MIN, borrow=None, backend="heap", sample_dt=None, trace=False):
     """Roda uma simulacao.
 
     orders: lista de Order ordenada por chegada (nao e modificada).
@@ -71,7 +70,7 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
     classes = []
     size_to_class = {}
     for ci, c in enumerate(dock_cfg["classes"]):
-        cl = _Class(c["name"], tuple(c["sizes"]), int(c["count"]), make_strategy(impl, **params))
+        cl = _Class(c["name"], tuple(c["sizes"]), int(c["count"]), make_strategy(impl, backend=backend, **params))
         classes.append(cl)
         for s in c["sizes"]:
             size_to_class[s] = ci

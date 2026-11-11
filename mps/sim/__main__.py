@@ -14,6 +14,8 @@ def main(argv=None):
     ap.add_argument("--strategies", default="all", help="'all' ou ids de configs/strategies.json")
     ap.add_argument("--docks", default="base_15", help="ids de configs/docks.json, separados por virgula")
     ap.add_argument("--seeds", default=None, help="ex.: 0-29 ou 0,5,9 (padrao 0-29)")
+    ap.add_argument("--backends", default="heap",
+                    help="backends da fila (heap,insertion,selection,merge,quick); so estrategias estaticas")
     ap.add_argument("--workers", type=int, default=1)
     ap.add_argument("--calibration", action="store_true",
                     help="usa seeds 1000-1009 e escreve calibration_*.csv")
@@ -23,6 +25,7 @@ def main(argv=None):
     strat = "all" if args.strategies == "all" else [s for s in args.strategies.split(",") if s]
     run_all(args.data, args.out, scen, strat, [d for d in args.docks.split(",") if d],
             parse_seeds(seeds_text), workers=args.workers, calibration=args.calibration,
+            backends=[b for b in args.backends.split(",") if b],
             argv=["python", "-m", "mps.sim"] + (argv if argv is not None else sys.argv[1:]))
 
 
