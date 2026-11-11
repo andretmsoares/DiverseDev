@@ -2,6 +2,10 @@
 
 Formato baseado em Keep a Changelog; versões semânticas.
 
+## [1.0.0] - 2026-11-11
+- Análise geral consolidando os dois experimentos (34.380 execuções): nota ponderada por estratégia, melhor algoritmo no geral, por tipo de docas e na Black Friday, sensibilidade ao peso do VIP.
+- `analysis/overall.py` gera gráficos, HTML e PDF; resultados em `reports/v1.0.0`.
+
 ## [0.3.0] - 2026-11-10
 - Perfil de janelas apertadas (`--window-profile tight`), modelos de docas não especializadas (`generic_nested_15`, `generic_speed_15`) e comparação completa de configurações de docas.
 - Análise: veredito por configuração de docas, calibração de alpha, mapa estratégia × doca.
