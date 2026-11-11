@@ -101,6 +101,22 @@ Contador `ops`: cada estratégia incrementa `self.ops` a cada comparação/troca
 
 `configs/strategies.json` lista as execuções (`id`, `impl`, `params`). A tag `virtual_deadline` varia `alpha` em 0, 0.5, 1, 2, 3, 5.
 
+## 5b. Algoritmos de ordenação (backends da fila) — adendo
+
+Os 5 algoritmos do guia (Insertion, Selection, Merge, Quick, Heap) são implementados como **backends** intercambiáveis da fila das estratégias de chave estática (`fifo`, `edf`, `wspt`, `virtual_deadline`). Mesma chave => mesma ordem de despacho (a chave inclui `seq`, então a ordem é total); muda só o custo.
+
+| backend | como mantém a fila |
+|---|---|
+| `heap` (padrão) | heap + mapa id->posição |
+| `insertion` | lista ordenada; push por inserção linear |
+| `selection` | lista sem ordem; pop varre a lista procurando o mínimo |
+| `merge` | reordena tudo com Merge Sort próprio sempre que a fila mudou antes de um pop |
+| `quick` | idem com Quick Sort próprio, pivô fixo (primeiro elemento), para expor o pior caso em fila quase ordenada |
+
+Todos contam `ops` (comparações/trocas) e respeitam a interface `Strategy` (inclusive `update`, `cancel`, `peek`). Parâmetro `backend` em `make_strategy(impl, backend="heap", **params)`.
+`configs/strategies.json` ganha a seção `"backends": ["heap","insertion","selection","merge","quick"]` e `"backend_strategies": ["edf","vd_a1"]` (mínimo; mais é bem-vindo).
+CLI do simulador: `--backends heap,insertion,...` (padrão `heap`). `runs.csv` ganha a coluna `backend` logo após `strategy_id`. Como os backends O(n) ou O(n log n) por operação são lentos sob fila grande, a comparação completa de backends roda nos cenários `normal_85`, `peak_105` e `overload_125` com menos seeds (ex.: 0-4); o script `scripts/bench_sorting.py` (n = 1k, 10k, 50k) também é obrigatório e gera `results/bench_sorting.csv` com `algorithm,n,op,ms_per_op,ops_per_op`.
+
 ## 6. Simulador (`mps.sim`)
 
 Evento discreto: chegadas, eventos (`update`, `cancel`), fim de embalagem, início/fim de falha de doca. Ao liberar uma doca (ou chegar pedido com doca livre), despacha conforme §4. Atrasos:
