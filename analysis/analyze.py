@@ -368,26 +368,37 @@ def plot_alpha(ctx, summ):
     ctx.save(fig, "08_curva_alpha.png", "Efeito de alpha nos atrasos; linhas pontilhadas sao o EDF.")
 
 
-def plot_docks(ctx, summ_all):
-    docks = sorted(summ_all.dock_config.unique())
+DOCK_ORDER = ["base_15", "base_15_no_borrow", "generic_15", "generic_nested_15", "generic_speed_15", "mini_8"]
+DOCK_LABEL = {"base_15": "especializada (emprestimo)", "base_15_no_borrow": "especializada (sem emprestimo)",
+              "generic_15": "generica uniforme", "generic_nested_15": "generica tamanhos variados (capacidade)",
+              "generic_speed_15": "generica tamanhos variados (velocidade)", "mini_8": "mini 8"}
+
+
+def dock_list(summ_all):
+    have = set(summ_all.dock_config.unique())
+    return [d for d in DOCK_ORDER if d in have] + sorted(have - set(DOCK_ORDER))
+
+
+def plot_docks(ctx, summ_all, strategy="edf"):
+    docks = dock_list(summ_all)
     if len(docks) < 2:
         return
-    strat = [s for s in ("fifo", "edf", "vd_a1") if s in set(summ_all.strategy_id)]
-    sc = [s for s in ("normal_85", "peak_105", "overload_125", "mix_shift_33", "dock_outage")
-          if s in set(summ_all.scenario_id)]
-    fig, axes = plt.subplots(1, 2, figsize=(14, 4.6))
-    for ax, (m, lab) in zip(axes, [("pct_late", "% atrasados"), ("p99_delay_min", "P99 (min)")]):
-        labels, vals, errs, cols = [], [], [], []
-        width = 0.8 / max(len(docks), 1)
+    sc = [s for s in ("normal_85", "peak_105", "overload_125", "black_friday", "promo_g_burst",
+                      "mix_shift_33", "dock_outage") if s in set(summ_all.scenario_id)]
+    metrics = [("pct_late", "% atrasados"), ("p99_delay_min", "P99 do atraso (min)"),
+               ("vip_pct_late", "% VIPs atrasados"), ("throughput_per_h", "pedidos por hora")]
+    fig, axes = plt.subplots(2, 2, figsize=(16, 9))
+    for ax, (m, lab) in zip(axes.ravel(), metrics):
+        width = 0.8 / len(docks)
         for j, dk in enumerate(docks):
-            ys = []
-            es = []
-            for s in sc:
-                r = summ_all[(summ_all.scenario_id == s) & (summ_all.dock_config == dk) & (summ_all.strategy_id == (strat[1] if len(strat) > 1 else strat[0]))]
+            ys, es = [], []
+            for s_ in sc:
+                r = summ_all[(summ_all.scenario_id == s_) & (summ_all.dock_config == dk) & (summ_all.strategy_id == strategy)]
                 ys.append(float(r[m].iloc[0]) if len(r) else np.nan)
                 es.append(float(r[m + "_ci"].iloc[0]) if len(r) else 0.0)
             xs = np.arange(len(sc)) + (j - (len(docks) - 1) / 2.0) * width
-            ax.bar(xs, ys, width * 0.92, yerr=es, color=PALETTE[j], label=dk, capsize=1.5)
+            ax.bar(xs, ys, width * 0.92, yerr=es, color=PALETTE[j % len(PALETTE)],
+                   label=DOCK_LABEL.get(dk, dk), capsize=1.5)
         ax.set_xticks(np.arange(len(sc)))
         ax.set_xticklabels(sc, rotation=20)
         ax.set_ylabel(lab)
@@ -395,9 +406,54 @@ def plot_docks(ctx, summ_all):
             ax.set_yscale("symlog", linthresh=1.0)
             ax.set_ylim(bottom=0)
         ax.grid(axis="y", alpha=0.3)
-    axes[0].legend(fontsize=8, frameon=False)
-    fig.suptitle("Configuracao de docas (estrategia %s)" % (strat[1] if len(strat) > 1 else strat[0]))
-    ctx.save(fig, "09_comparacao_docas.png", "Docas genericas x especializadas, com e sem emprestimo.")
+    axes[0, 0].legend(fontsize=8, frameon=False)
+    fig.suptitle("Configuracao de docas x cenario (estrategia %s)" % strategy)
+    ctx.save(fig, "09_comparacao_docas.png", "Docas especializadas x genericas (uniformes e de tamanhos variados).")
+
+
+def plot_heat_strategy_dock(ctx, summ_all, core):
+    docks = dock_list(summ_all)
+    sc = [s for s in ("peak_105", "overload_125", "black_friday", "mix_shift_33") if s in set(summ_all.scenario_id)]
+    if len(docks) < 2 or not sc:
+        return
+    fig, axes = plt.subplots(1, len(sc), figsize=(4.6 * len(sc), 1.6 + 0.42 * len(core)), sharey=True)
+    axes = np.atleast_1d(axes)
+    for ax, s_ in zip(axes, sc):
+        piv = summ_all[summ_all.scenario_id == s_].pivot_table(index="strategy_id", columns="dock_config", values="pct_late")
+        piv = piv.reindex(index=[c for c in core if c in piv.index], columns=[d for d in docks if d in piv.columns])
+        im = ax.imshow(piv.values, aspect="auto", cmap="YlOrRd", vmin=0)
+        ax.set_xticks(range(piv.shape[1]))
+        ax.set_xticklabels(piv.columns, rotation=60, ha="right", fontsize=8)
+        ax.set_yticks(range(piv.shape[0]))
+        ax.set_yticklabels(piv.index)
+        for i in range(piv.shape[0]):
+            for j in range(piv.shape[1]):
+                v = piv.values[i, j]
+                if not np.isnan(v):
+                    ax.text(j, i, "%.1f" % v, ha="center", va="center", fontsize=8)
+        ax.set_title(s_)
+    fig.suptitle("% de pedidos atrasados: estrategia x configuracao de docas")
+    ctx.save(fig, "13_mapa_estrategia_doca.png", "Qual combinacao estrategia x doca atrasa menos.")
+
+
+def docks_markdown(summ_all, strategies=("edf", "vd_a2", "fifo")):
+    docks = dock_list(summ_all)
+    if len(docks) < 2:
+        return ""
+    L = []
+    for st in strategies:
+        if st not in set(summ_all.strategy_id):
+            continue
+        for m, lab, fmt in [("pct_late", "% atrasados", "{:.1f}"), ("p99_delay_min", "P99 (min)", "{:.0f}"),
+                            ("vip_pct_late", "% VIPs atrasados", "{:.1f}"), ("throughput_per_h", "pedidos/h", "{:.0f}")]:
+            piv = summ_all[summ_all.strategy_id == st].pivot_table(index="scenario_id", columns="dock_config", values=m)
+            piv = piv[[d for d in docks if d in piv.columns]]
+            order = [x for x in ("normal_85", "peak_105", "overload_125", "black_friday", "promo_g_burst",
+                                 "mix_shift_33", "dock_outage", "regional_mix") if x in piv.index]
+            piv = piv.loc[order].reset_index().rename(columns={"scenario_id": "cenario"})
+            L.append("**%s - %s**\n" % (st, lab))
+            L.append(md_table(piv, fmt))
+    return "\n".join(L)
 
 
 def plot_by_class(ctx, summ, core, scenario="peak_105"):
@@ -507,6 +563,7 @@ def paired_delta(runs, scen, dock, a, b, metric):
 
 def decision(ctx, runs, summ, dock, finalists):
     args = ctx.args
+    runs = runs[runs.dock_config == dock]
     a_list = [s for s in finalists if s != "edf" and s in set(runs.strategy_id)]
     scen_all = [s for s in args.decisive.split(",") if s in set(runs.scenario_id)]
     if "edf" not in set(runs.strategy_id) or not a_list or not scen_all:
@@ -518,6 +575,8 @@ def decision(ctx, runs, summ, dock, finalists):
         ok_all = True
         for sc in scen_all + guard:
             decisive = sc in scen_all
+            if summ[(summ.scenario_id == sc) & (summ.strategy_id == st)].empty:
+                continue
             vip_e = float(summ[(summ.scenario_id == sc) & (summ.dock_config == dock) & (summ.strategy_id == "edf")]["vip_pct_late"].iloc[0])
             vip_s = float(summ[(summ.scenario_id == sc) & (summ.dock_config == dock) & (summ.strategy_id == st)]["vip_pct_late"].iloc[0])
             p99_e = float(summ[(summ.scenario_id == sc) & (summ.dock_config == dock) & (summ.strategy_id == "edf")]["p99_delay_min"].iloc[0])
@@ -556,7 +615,51 @@ def decision(ctx, runs, summ, dock, finalists):
            % (", ".join(scen_all), args.vip_reduction * 100, args.min_vip_base, args.max_pp,
               args.max_p99_rel * 100, ", ".join(guard) or "nenhum"))
     txt += md_table(tab, "{:.2f}") + "\n**Veredito:** " + res + "\n"
+    ctx.last_decision_table = tab
     return (winners[0] if winners else "edf"), txt
+
+
+def calibration_markdown(ctx, results, dock):
+    """Escolhe alpha nas sementes de calibracao (1000-1009), sem tocar nas de avaliacao."""
+    p = os.path.join(results, "calibration_runs.csv")
+    if not os.path.exists(p):
+        return ""
+    c = pd.read_csv(p)
+    if "backend" in c.columns:
+        c = c[c.backend.fillna("heap") == "heap"]
+    c = c[c.dock_config == dock]
+    a = ctx.args
+    scen = [s for s in a.decisive.split(",") if s in set(c.scenario_id)]
+    vds = sorted([s for s in c.strategy_id.unique() if s.startswith("vd_") and s != "vd_a0"],
+                 key=lambda x: float(x.split("_a")[1]))
+    if not scen or "edf" not in set(c.strategy_id) or not vds:
+        return ""
+    m = c.groupby(["scenario_id", "strategy_id"])[["pct_late", "p99_delay_min", "vip_pct_late"]].mean()
+    rows, ok = [], {}
+    for v in vds:
+        good = True
+        for sc in scen:
+            e, x = m.loc[(sc, "edf")], m.loc[(sc, v)]
+            red = (e.vip_pct_late - x.vip_pct_late) / e.vip_pct_late if e.vip_pct_late > 0 else float("nan")
+            dp = x.pct_late - e.pct_late
+            dq = (x.p99_delay_min - e.p99_delay_min) / max(e.p99_delay_min, 1.0)
+            cond = (not pd.isna(red)) and e.vip_pct_late >= a.min_vip_base and red >= a.vip_reduction \
+                and dp <= a.max_pp and dq <= a.max_p99_rel
+            good = good and bool(cond)
+            rows.append({"alpha": v, "cenario": sc, "reducao VIP (%)": red * 100 if not pd.isna(red) else float("nan"),
+                         "delta % atrasados (pp)": dp, "delta P99 (%)": dq * 100, "atende": "sim" if cond else "nao"})
+        ok[v] = good
+    chosen = [v for v in vds if ok[v]]
+    txt = ("Calibracao em sementes separadas (`calibration_runs.csv`, docas `%s`): os mesmos limites do criterio "
+           "aplicados as medias das sementes de calibracao.\n\n" % dock)
+    txt += md_table(pd.DataFrame(rows), "{:.2f}")
+    if chosen:
+        txt += "\n**alpha escolhido na calibracao:** %s (maior protecao de VIP dentro dos limites).\n" % chosen[-1]
+        ctx.chosen_alpha = chosen[-1]
+    else:
+        txt += "\n**Nenhum alpha da grade atende aos limites na calibracao**; a decisao fica com o EDF.\n"
+        ctx.chosen_alpha = None
+    return txt
 
 
 # ------------------------------------------------------------------ relatorio
@@ -640,6 +743,16 @@ def write_report(ctx, runs, extra, summ, summ_all, dock, order, core, verdict_tx
             L.append(md_table(t))
     L.append("## 3. Criterio de decisao: EDF x prazo virtual\n")
     L.append(verdict_txt)
+    if getattr(ctx, "extra_dock_verdicts", ""):
+        L.append("### Veredito por configuracao de docas\n")
+        L.append(ctx.extra_dock_verdicts)
+    if getattr(ctx, "calib_md", ""):
+        L.append("### Calibracao de alpha\n")
+        L.append(ctx.calib_md)
+    if getattr(ctx, "docks_md", ""):
+        L.append("### Comparacao de configuracoes de docas\n")
+        L.append("Docas: " + "; ".join("`%s` = %s" % (k, v) for k, v in DOCK_LABEL.items() if k in set(summ_all.dock_config)) + ".\n")
+        L.append(ctx.docks_md)
     L.append("## 4. Graficos\n")
     for name, cap in ctx.figs:
         L.append("![%s](plots/%s)\n\n_%s_\n" % (name, name, cap))
@@ -733,14 +846,28 @@ def main(argv=None):
     safe(ctx, plot_pareto, summ, core)
     safe(ctx, plot_alpha, summ)
     safe(ctx, plot_docks, summ_all)
+    safe(ctx, plot_heat_strategy_dock, summ_all, core)
     safe(ctx, plot_by_class, summ, core)
     safe(ctx, plot_cost, summ, core)
     safe(ctx, plot_backends, runs, extra["bench_sorting"])
 
     winner, verdict_txt = "edf", ""
     try:
-        w, verdict_txt = decision(ctx, heap, summ, dock, finalists)
+        dec_set = ["edf"] + [x for x in order if x.startswith("vd_") and x != "vd_a0"]
+        w, verdict_txt = decision(ctx, heap, summ_all[summ_all.dock_config == dock], dock, dec_set)
         winner = w or "edf"
+        lines = []
+        for dk in dock_list(summ_all):
+            if dk == dock:
+                continue
+            try:
+                w2, _ = decision(ctx, heap, summ_all[summ_all.dock_config == dk], dk, dec_set)
+                lines.append("- `%s`: %s" % (dk, "EDF" if (w2 or "edf") == "edf" else "prazo virtual (%s)" % w2))
+            except Exception as e2:
+                lines.append("- `%s`: nao avaliado (%r)" % (dk, e2))
+        ctx.extra_dock_verdicts = "\n".join(lines) + "\n" if lines else ""
+        ctx.calib_md = calibration_markdown(ctx, args.results, dock)
+        ctx.docks_md = docks_markdown(summ_all)
     except Exception as e:
         ctx.warn("decision falhou: %r" % (e,))
         verdict_txt = "_Criterio nao avaliado (ver avisos)._\n"
