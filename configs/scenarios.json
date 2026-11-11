@@ -69,7 +69,7 @@
   }
  },
  "regions": {
-  "_doc": "share = fatia do volume; shift_min desloca o perfil diario da regiao (fuso/habito); sla_tiers = [sla_min, prob]; window_median_frac = mediana da janela / SLA; window_sigma = ruido log-normal da janela; distance_median_km; rep_beta = (a,b) da reputacao do vendedor; value_scale = fator de valor do item.",
+  "_doc": "share = fatia do volume; shift_min desloca o perfil diario da regiao (fuso/habito); sla_tiers = [sla_min, prob]; window_median_frac = mediana da janela / SLA; window_sigma = ruido log-normal da janela; distance_median_km; rep_beta = (a,b) da reputacao do vendedor; value_scale = fator de valor do item. Chave 'tight' sobrescreve sla_tiers/window_median_frac/window_sigma quando --window-profile tight (janelas 30-120 min).",
   "BR": {
    "sla_tiers": [
     [
@@ -97,7 +97,29 @@
     2
    ],
    "value_scale": 1.0,
-   "shift_min": 0
+   "shift_min": 0,
+   "tight": {
+    "sla_tiers": [
+     [
+      40,
+      0.25
+     ],
+     [
+      55,
+      0.35
+     ],
+     [
+      75,
+      0.25
+     ],
+     [
+      100,
+      0.15
+     ]
+    ],
+    "window_median_frac": 0.9,
+    "window_sigma": 0.25
+   }
   },
   "MX": {
    "sla_tiers": [
@@ -126,7 +148,29 @@
     2
    ],
    "value_scale": 0.9,
-   "shift_min": 90
+   "shift_min": 90,
+   "tight": {
+    "sla_tiers": [
+     [
+      35,
+      0.3
+     ],
+     [
+      50,
+      0.35
+     ],
+     [
+      65,
+      0.2
+     ],
+     [
+      90,
+      0.15
+     ]
+    ],
+    "window_median_frac": 0.9,
+    "window_sigma": 0.3
+   }
   },
   "AR": {
    "sla_tiers": [
@@ -155,7 +199,29 @@
     2.2
    ],
    "value_scale": 0.7,
-   "shift_min": -60
+   "shift_min": -60,
+   "tight": {
+    "sla_tiers": [
+     [
+      50,
+      0.2
+     ],
+     [
+      70,
+      0.35
+     ],
+     [
+      90,
+      0.25
+     ],
+     [
+      120,
+      0.2
+     ]
+    ],
+    "window_median_frac": 0.9,
+    "window_sigma": 0.4
+   }
   },
   "CO": {
    "sla_tiers": [
@@ -184,7 +250,29 @@
     2.2
    ],
    "value_scale": 0.8,
-   "shift_min": 30
+   "shift_min": 30,
+   "tight": {
+    "sla_tiers": [
+     [
+      40,
+      0.25
+     ],
+     [
+      60,
+      0.35
+     ],
+     [
+      80,
+      0.25
+     ],
+     [
+      110,
+      0.15
+     ]
+    ],
+    "window_median_frac": 0.9,
+    "window_sigma": 0.3
+   }
   },
   "CL": {
    "sla_tiers": [
@@ -213,7 +301,29 @@
     1.8
    ],
    "value_scale": 1.0,
-   "shift_min": 0
+   "shift_min": 0,
+   "tight": {
+    "sla_tiers": [
+     [
+      40,
+      0.3
+     ],
+     [
+      55,
+      0.35
+     ],
+     [
+      75,
+      0.2
+     ],
+     [
+      100,
+      0.15
+     ]
+    ],
+    "window_median_frac": 0.9,
+    "window_sigma": 0.2
+   }
   }
  },
  "scenarios": {

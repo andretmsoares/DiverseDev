@@ -67,6 +67,10 @@ Capacidade nominal do `base_15` = **480 pedidos/h** (mix 50/35/15). Rótulos de 
 
 Realismo exigido: chegadas por processo de Poisson não homogêneo; janelas log-normais em 30 a 240 min (truncadas), mais curtas quando o SLA é apertado; ~3% de pedidos com atualização e ~2% com cancelamento; valor do item correlacionado ao tamanho; **`priority_score` calculado a partir de componentes** com os pesos SLA 40%, distância 20%, valor 25%, reputação 15% (pesos do documento do projeto); fração de VIPs entre 15% e 30%.
 
+### Adendo (perfil de janelas)
+
+`python -m mps.datagen ... --window-profile wide|tight` (padrao `wide`, janelas 30 a 240 min). O perfil `tight` gera janelas de 30 a 120 min (mediana ~55) e eventos `update` de prazo com `new_deadline_min - time_min` em [30, 120]; o restante do contrato nao muda. O manifest traz `window_profile` e `window_bounds_min`. Os dados `tight` ficam em outra pasta (ex.: `data/synthetic_tight`). Detalhes em `docs/DATA.md`.
+
 ## 4. Docas (`configs/docks.json`)
 
 Cada configuração tem `classes` (ordenadas da menor para a maior), cada uma com `name`, `sizes` aceitos e `count`, e `borrow` (`"one_way"` ou `"none"`).
