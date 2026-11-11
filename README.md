@@ -25,4 +25,14 @@ python -m unittest discover -s tests -v
 ```
 Análise: `pip install -r requirements.txt` (de preferência em `.venv`).
 
-Ver `docs/CONTRACT.md` (formatos e regras) e `CONTRIBUTING.md` (git).
+Experimento v2 (janelas apertadas e 5 configurações de docas):
+```
+python -m mps.datagen --scenarios all --seeds 0-29 --window-profile tight --out data/synthetic_tight
+python -m mps.datagen --scenarios all --calibration --window-profile tight --out data/synthetic_tight
+bash scripts/run_experiments_v2.sh
+python analysis/analyze.py --results results/v2 --out results/v2/report
+```
+
+Resultados versionados em `reports/` (ver `reports/v0.3.0/ANALISE.md`).
+
+Ver `docs/CONTRACT.md` (formatos e regras), `docs/DOCKS.md` (modelos de docas) e `CONTRIBUTING.md` (git).

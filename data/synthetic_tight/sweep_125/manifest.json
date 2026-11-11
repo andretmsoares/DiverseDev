@@ -1,0 +1,679 @@
+{
+  "scenario_id": "sweep_125",
+  "description": "Varredura de carga constante a 125% (600/h) com perfil diario suave",
+  "seeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    1000,
+    1001,
+    1002,
+    1003,
+    1004,
+    1005,
+    1006,
+    1007,
+    1008,
+    1009
+  ],
+  "duration_min": 960,
+  "base_rate_per_h": 600.0,
+  "load_pct": 125,
+  "nominal_capacity_per_h": 480,
+  "size_mix": {
+    "P": 0.5,
+    "M": 0.35,
+    "G": 0.15
+  },
+  "expected_size_mix": {
+    "P": 0.5,
+    "M": 0.35,
+    "G": 0.15
+  },
+  "mix_windows": [],
+  "rate_profile": "daily_smooth (media 1; rate_knots=[]; regioes=BR:1.00)",
+  "rate_per_h_min_max": [
+    514.3,
+    660.8
+  ],
+  "dock_config": "base_15",
+  "outages": [],
+  "warmup_min": 60,
+  "window_profile": "tight",
+  "window_bounds_min": [
+    30.0,
+    120.0
+  ],
+  "update_prob": 0.03,
+  "cancel_prob": 0.02,
+  "notes": "",
+  "seed_stats": {
+    "0": {
+      "n_orders": 9431,
+      "mean_rate_per_h": 589.44,
+      "pct_vip": 22.15,
+      "size_mix": {
+        "P": 0.4934,
+        "M": 0.3528,
+        "G": 0.1539
+      },
+      "region_counts": {
+        "BR": 9431
+      },
+      "n_updates": 272,
+      "n_cancels": 192
+    },
+    "1": {
+      "n_orders": 9625,
+      "mean_rate_per_h": 601.56,
+      "pct_vip": 21.67,
+      "size_mix": {
+        "P": 0.5054,
+        "M": 0.349,
+        "G": 0.1457
+      },
+      "region_counts": {
+        "BR": 9625
+      },
+      "n_updates": 295,
+      "n_cancels": 200
+    },
+    "2": {
+      "n_orders": 9667,
+      "mean_rate_per_h": 604.19,
+      "pct_vip": 21.93,
+      "size_mix": {
+        "P": 0.5031,
+        "M": 0.3519,
+        "G": 0.145
+      },
+      "region_counts": {
+        "BR": 9667
+      },
+      "n_updates": 295,
+      "n_cancels": 200
+    },
+    "3": {
+      "n_orders": 9663,
+      "mean_rate_per_h": 603.94,
+      "pct_vip": 21.57,
+      "size_mix": {
+        "P": 0.5038,
+        "M": 0.342,
+        "G": 0.1542
+      },
+      "region_counts": {
+        "BR": 9663
+      },
+      "n_updates": 260,
+      "n_cancels": 215
+    },
+    "4": {
+      "n_orders": 9441,
+      "mean_rate_per_h": 590.06,
+      "pct_vip": 21.27,
+      "size_mix": {
+        "P": 0.5037,
+        "M": 0.3441,
+        "G": 0.1522
+      },
+      "region_counts": {
+        "BR": 9441
+      },
+      "n_updates": 297,
+      "n_cancels": 163
+    },
+    "5": {
+      "n_orders": 9621,
+      "mean_rate_per_h": 601.31,
+      "pct_vip": 21.69,
+      "size_mix": {
+        "P": 0.503,
+        "M": 0.3478,
+        "G": 0.1493
+      },
+      "region_counts": {
+        "BR": 9621
+      },
+      "n_updates": 308,
+      "n_cancels": 202
+    },
+    "6": {
+      "n_orders": 9627,
+      "mean_rate_per_h": 601.69,
+      "pct_vip": 21.57,
+      "size_mix": {
+        "P": 0.5048,
+        "M": 0.3457,
+        "G": 0.1495
+      },
+      "region_counts": {
+        "BR": 9627
+      },
+      "n_updates": 293,
+      "n_cancels": 208
+    },
+    "7": {
+      "n_orders": 9542,
+      "mean_rate_per_h": 596.38,
+      "pct_vip": 22.45,
+      "size_mix": {
+        "P": 0.5012,
+        "M": 0.3478,
+        "G": 0.151
+      },
+      "region_counts": {
+        "BR": 9542
+      },
+      "n_updates": 303,
+      "n_cancels": 175
+    },
+    "8": {
+      "n_orders": 9470,
+      "mean_rate_per_h": 591.88,
+      "pct_vip": 22.1,
+      "size_mix": {
+        "P": 0.4935,
+        "M": 0.3515,
+        "G": 0.155
+      },
+      "region_counts": {
+        "BR": 9470
+      },
+      "n_updates": 268,
+      "n_cancels": 195
+    },
+    "9": {
+      "n_orders": 9724,
+      "mean_rate_per_h": 607.75,
+      "pct_vip": 21.6,
+      "size_mix": {
+        "P": 0.4922,
+        "M": 0.3527,
+        "G": 0.1551
+      },
+      "region_counts": {
+        "BR": 9724
+      },
+      "n_updates": 264,
+      "n_cancels": 213
+    },
+    "10": {
+      "n_orders": 9673,
+      "mean_rate_per_h": 604.56,
+      "pct_vip": 21.35,
+      "size_mix": {
+        "P": 0.495,
+        "M": 0.3533,
+        "G": 0.1518
+      },
+      "region_counts": {
+        "BR": 9673
+      },
+      "n_updates": 284,
+      "n_cancels": 244
+    },
+    "11": {
+      "n_orders": 9552,
+      "mean_rate_per_h": 597.0,
+      "pct_vip": 22.31,
+      "size_mix": {
+        "P": 0.5017,
+        "M": 0.3445,
+        "G": 0.1538
+      },
+      "region_counts": {
+        "BR": 9552
+      },
+      "n_updates": 284,
+      "n_cancels": 189
+    },
+    "12": {
+      "n_orders": 9544,
+      "mean_rate_per_h": 596.5,
+      "pct_vip": 21.98,
+      "size_mix": {
+        "P": 0.503,
+        "M": 0.3503,
+        "G": 0.1467
+      },
+      "region_counts": {
+        "BR": 9544
+      },
+      "n_updates": 297,
+      "n_cancels": 198
+    },
+    "13": {
+      "n_orders": 9668,
+      "mean_rate_per_h": 604.25,
+      "pct_vip": 21.02,
+      "size_mix": {
+        "P": 0.4991,
+        "M": 0.3422,
+        "G": 0.1588
+      },
+      "region_counts": {
+        "BR": 9668
+      },
+      "n_updates": 293,
+      "n_cancels": 222
+    },
+    "14": {
+      "n_orders": 9570,
+      "mean_rate_per_h": 598.12,
+      "pct_vip": 20.87,
+      "size_mix": {
+        "P": 0.4985,
+        "M": 0.3473,
+        "G": 0.1541
+      },
+      "region_counts": {
+        "BR": 9570
+      },
+      "n_updates": 268,
+      "n_cancels": 189
+    },
+    "15": {
+      "n_orders": 9469,
+      "mean_rate_per_h": 591.81,
+      "pct_vip": 21.9,
+      "size_mix": {
+        "P": 0.5023,
+        "M": 0.3499,
+        "G": 0.1479
+      },
+      "region_counts": {
+        "BR": 9469
+      },
+      "n_updates": 278,
+      "n_cancels": 204
+    },
+    "16": {
+      "n_orders": 9648,
+      "mean_rate_per_h": 603.0,
+      "pct_vip": 21.63,
+      "size_mix": {
+        "P": 0.504,
+        "M": 0.3521,
+        "G": 0.1439
+      },
+      "region_counts": {
+        "BR": 9648
+      },
+      "n_updates": 307,
+      "n_cancels": 179
+    },
+    "17": {
+      "n_orders": 9541,
+      "mean_rate_per_h": 596.31,
+      "pct_vip": 22.02,
+      "size_mix": {
+        "P": 0.4944,
+        "M": 0.3518,
+        "G": 0.1538
+      },
+      "region_counts": {
+        "BR": 9541
+      },
+      "n_updates": 290,
+      "n_cancels": 197
+    },
+    "18": {
+      "n_orders": 9594,
+      "mean_rate_per_h": 599.62,
+      "pct_vip": 21.88,
+      "size_mix": {
+        "P": 0.5001,
+        "M": 0.3484,
+        "G": 0.1514
+      },
+      "region_counts": {
+        "BR": 9594
+      },
+      "n_updates": 249,
+      "n_cancels": 194
+    },
+    "19": {
+      "n_orders": 9526,
+      "mean_rate_per_h": 595.38,
+      "pct_vip": 21.68,
+      "size_mix": {
+        "P": 0.5035,
+        "M": 0.3451,
+        "G": 0.1515
+      },
+      "region_counts": {
+        "BR": 9526
+      },
+      "n_updates": 304,
+      "n_cancels": 184
+    },
+    "20": {
+      "n_orders": 9437,
+      "mean_rate_per_h": 589.81,
+      "pct_vip": 21.2,
+      "size_mix": {
+        "P": 0.5042,
+        "M": 0.3476,
+        "G": 0.1482
+      },
+      "region_counts": {
+        "BR": 9437
+      },
+      "n_updates": 271,
+      "n_cancels": 187
+    },
+    "21": {
+      "n_orders": 9573,
+      "mean_rate_per_h": 598.31,
+      "pct_vip": 21.85,
+      "size_mix": {
+        "P": 0.4895,
+        "M": 0.3541,
+        "G": 0.1564
+      },
+      "region_counts": {
+        "BR": 9573
+      },
+      "n_updates": 283,
+      "n_cancels": 165
+    },
+    "22": {
+      "n_orders": 9657,
+      "mean_rate_per_h": 603.56,
+      "pct_vip": 21.88,
+      "size_mix": {
+        "P": 0.5005,
+        "M": 0.3577,
+        "G": 0.1419
+      },
+      "region_counts": {
+        "BR": 9657
+      },
+      "n_updates": 283,
+      "n_cancels": 167
+    },
+    "23": {
+      "n_orders": 9585,
+      "mean_rate_per_h": 599.06,
+      "pct_vip": 22.11,
+      "size_mix": {
+        "P": 0.4984,
+        "M": 0.3503,
+        "G": 0.1513
+      },
+      "region_counts": {
+        "BR": 9585
+      },
+      "n_updates": 291,
+      "n_cancels": 199
+    },
+    "24": {
+      "n_orders": 9473,
+      "mean_rate_per_h": 592.06,
+      "pct_vip": 22.21,
+      "size_mix": {
+        "P": 0.4903,
+        "M": 0.3581,
+        "G": 0.1516
+      },
+      "region_counts": {
+        "BR": 9473
+      },
+      "n_updates": 273,
+      "n_cancels": 182
+    },
+    "25": {
+      "n_orders": 9610,
+      "mean_rate_per_h": 600.62,
+      "pct_vip": 20.77,
+      "size_mix": {
+        "P": 0.4967,
+        "M": 0.3506,
+        "G": 0.1528
+      },
+      "region_counts": {
+        "BR": 9610
+      },
+      "n_updates": 279,
+      "n_cancels": 219
+    },
+    "26": {
+      "n_orders": 9640,
+      "mean_rate_per_h": 602.5,
+      "pct_vip": 21.01,
+      "size_mix": {
+        "P": 0.4925,
+        "M": 0.3589,
+        "G": 0.1485
+      },
+      "region_counts": {
+        "BR": 9640
+      },
+      "n_updates": 295,
+      "n_cancels": 191
+    },
+    "27": {
+      "n_orders": 9562,
+      "mean_rate_per_h": 597.62,
+      "pct_vip": 21.76,
+      "size_mix": {
+        "P": 0.5036,
+        "M": 0.3525,
+        "G": 0.1439
+      },
+      "region_counts": {
+        "BR": 9562
+      },
+      "n_updates": 277,
+      "n_cancels": 195
+    },
+    "28": {
+      "n_orders": 9444,
+      "mean_rate_per_h": 590.25,
+      "pct_vip": 21.8,
+      "size_mix": {
+        "P": 0.4954,
+        "M": 0.35,
+        "G": 0.1546
+      },
+      "region_counts": {
+        "BR": 9444
+      },
+      "n_updates": 302,
+      "n_cancels": 191
+    },
+    "29": {
+      "n_orders": 9747,
+      "mean_rate_per_h": 609.19,
+      "pct_vip": 21.42,
+      "size_mix": {
+        "P": 0.4996,
+        "M": 0.3495,
+        "G": 0.1508
+      },
+      "region_counts": {
+        "BR": 9747
+      },
+      "n_updates": 265,
+      "n_cancels": 211
+    },
+    "1000": {
+      "n_orders": 9719,
+      "mean_rate_per_h": 607.44,
+      "pct_vip": 21.77,
+      "size_mix": {
+        "P": 0.497,
+        "M": 0.3567,
+        "G": 0.1463
+      },
+      "region_counts": {
+        "BR": 9719
+      },
+      "n_updates": 275,
+      "n_cancels": 199
+    },
+    "1001": {
+      "n_orders": 9645,
+      "mean_rate_per_h": 602.81,
+      "pct_vip": 21.4,
+      "size_mix": {
+        "P": 0.4951,
+        "M": 0.3586,
+        "G": 0.1463
+      },
+      "region_counts": {
+        "BR": 9645
+      },
+      "n_updates": 282,
+      "n_cancels": 190
+    },
+    "1002": {
+      "n_orders": 9692,
+      "mean_rate_per_h": 605.75,
+      "pct_vip": 21.26,
+      "size_mix": {
+        "P": 0.5062,
+        "M": 0.3442,
+        "G": 0.1496
+      },
+      "region_counts": {
+        "BR": 9692
+      },
+      "n_updates": 318,
+      "n_cancels": 214
+    },
+    "1003": {
+      "n_orders": 9820,
+      "mean_rate_per_h": 613.75,
+      "pct_vip": 21.45,
+      "size_mix": {
+        "P": 0.505,
+        "M": 0.3486,
+        "G": 0.1464
+      },
+      "region_counts": {
+        "BR": 9820
+      },
+      "n_updates": 298,
+      "n_cancels": 221
+    },
+    "1004": {
+      "n_orders": 9652,
+      "mean_rate_per_h": 603.25,
+      "pct_vip": 21.5,
+      "size_mix": {
+        "P": 0.4991,
+        "M": 0.3502,
+        "G": 0.1507
+      },
+      "region_counts": {
+        "BR": 9652
+      },
+      "n_updates": 280,
+      "n_cancels": 172
+    },
+    "1005": {
+      "n_orders": 9648,
+      "mean_rate_per_h": 603.0,
+      "pct_vip": 21.29,
+      "size_mix": {
+        "P": 0.5042,
+        "M": 0.3512,
+        "G": 0.1446
+      },
+      "region_counts": {
+        "BR": 9648
+      },
+      "n_updates": 290,
+      "n_cancels": 182
+    },
+    "1006": {
+      "n_orders": 9605,
+      "mean_rate_per_h": 600.31,
+      "pct_vip": 21.72,
+      "size_mix": {
+        "P": 0.5039,
+        "M": 0.3533,
+        "G": 0.1428
+      },
+      "region_counts": {
+        "BR": 9605
+      },
+      "n_updates": 311,
+      "n_cancels": 210
+    },
+    "1007": {
+      "n_orders": 9668,
+      "mean_rate_per_h": 604.25,
+      "pct_vip": 22.29,
+      "size_mix": {
+        "P": 0.4887,
+        "M": 0.3617,
+        "G": 0.1496
+      },
+      "region_counts": {
+        "BR": 9668
+      },
+      "n_updates": 294,
+      "n_cancels": 198
+    },
+    "1008": {
+      "n_orders": 9805,
+      "mean_rate_per_h": 612.81,
+      "pct_vip": 21.57,
+      "size_mix": {
+        "P": 0.4937,
+        "M": 0.3524,
+        "G": 0.1539
+      },
+      "region_counts": {
+        "BR": 9805
+      },
+      "n_updates": 293,
+      "n_cancels": 210
+    },
+    "1009": {
+      "n_orders": 9671,
+      "mean_rate_per_h": 604.44,
+      "pct_vip": 21.76,
+      "size_mix": {
+        "P": 0.5048,
+        "M": 0.3414,
+        "G": 0.1538
+      },
+      "region_counts": {
+        "BR": 9671
+      },
+      "n_updates": 268,
+      "n_cancels": 198
+    }
+  }
+}
