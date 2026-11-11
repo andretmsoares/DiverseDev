@@ -586,6 +586,9 @@ def findings(summ, dock, strategies):
         if d.empty:
             continue
         have = [s for s in strategies if s in d.index]
+        if float(d["pct_late"].max()) < 0.05:
+            out.append("- **%s:** nenhuma estrategia teve atrasos; o cenario nao discrimina as estrategias." % sc)
+            continue
         if "fifo" in d.index and "edf" in d.index:
             f, e = d.loc["fifo"], d.loc["edf"]
             out.append("- **%s:** EDF reduz os atrasados de %.1f%% (FIFO) para %.1f%% e o P99 de %.1f para %.1f min."
