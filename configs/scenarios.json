@@ -1,0 +1,442 @@
+{
+ "version": 1,
+ "nominal_capacity_per_h": 480,
+ "defaults": {
+  "duration_min": 960,
+  "warmup_min": 60,
+  "dock_config": "base_15",
+  "size_mix": {
+   "P": 0.5,
+   "M": 0.35,
+   "G": 0.15
+  },
+  "profile": "daily",
+  "update_prob": 0.03,
+  "cancel_prob": 0.02,
+  "update_deadline_share": 0.5,
+  "regions": {
+   "BR": {
+    "share": 1.0
+   }
+  },
+  "outages": [],
+  "mix_windows": [],
+  "rate_knots": []
+ },
+ "profiles": {
+  "_doc": "Multiplicador por hora do dia operacional (06h..22h, 16 valores); interpolado linearmente entre centros de hora e normalizado para media 1. amplitude escala o desvio em torno de 1.",
+  "daily": {
+   "hourly": [
+    0.6,
+    0.75,
+    0.95,
+    1.15,
+    1.3,
+    1.25,
+    0.9,
+    0.85,
+    1.0,
+    1.15,
+    1.1,
+    1.0,
+    0.95,
+    1.1,
+    1.2,
+    0.9
+   ],
+   "amplitude": 1.0
+  },
+  "daily_smooth": {
+   "hourly": [
+    0.6,
+    0.75,
+    0.95,
+    1.15,
+    1.3,
+    1.25,
+    0.9,
+    0.85,
+    1.0,
+    1.15,
+    1.1,
+    1.0,
+    0.95,
+    1.1,
+    1.2,
+    0.9
+   ],
+   "amplitude": 0.35
+  }
+ },
+ "regions": {
+  "_doc": "share = fatia do volume; shift_min desloca o perfil diario da regiao (fuso/habito); sla_tiers = [sla_min, prob]; window_median_frac = mediana da janela / SLA; window_sigma = ruido log-normal da janela; distance_median_km; rep_beta = (a,b) da reputacao do vendedor; value_scale = fator de valor do item.",
+  "BR": {
+   "sla_tiers": [
+    [
+     60,
+     0.15
+    ],
+    [
+     120,
+     0.35
+    ],
+    [
+     180,
+     0.3
+    ],
+    [
+     240,
+     0.2
+    ]
+   ],
+   "window_median_frac": 0.8,
+   "window_sigma": 0.25,
+   "distance_median_km": 220,
+   "rep_beta": [
+    6,
+    2
+   ],
+   "value_scale": 1.0,
+   "shift_min": 0
+  },
+  "MX": {
+   "sla_tiers": [
+    [
+     90,
+     0.2
+    ],
+    [
+     150,
+     0.4
+    ],
+    [
+     210,
+     0.25
+    ],
+    [
+     240,
+     0.15
+    ]
+   ],
+   "window_median_frac": 0.8,
+   "window_sigma": 0.3,
+   "distance_median_km": 180,
+   "rep_beta": [
+    5.5,
+    2
+   ],
+   "value_scale": 0.9,
+   "shift_min": 90
+  },
+  "AR": {
+   "sla_tiers": [
+    [
+     45,
+     0.25
+    ],
+    [
+     90,
+     0.35
+    ],
+    [
+     150,
+     0.25
+    ],
+    [
+     240,
+     0.15
+    ]
+   ],
+   "window_median_frac": 0.8,
+   "window_sigma": 0.4,
+   "distance_median_km": 140,
+   "rep_beta": [
+    4.5,
+    2.2
+   ],
+   "value_scale": 0.7,
+   "shift_min": -60
+  },
+  "CO": {
+   "sla_tiers": [
+    [
+     60,
+     0.2
+    ],
+    [
+     120,
+     0.4
+    ],
+    [
+     180,
+     0.25
+    ],
+    [
+     240,
+     0.15
+    ]
+   ],
+   "window_median_frac": 0.8,
+   "window_sigma": 0.3,
+   "distance_median_km": 160,
+   "rep_beta": [
+    5,
+    2.2
+   ],
+   "value_scale": 0.8,
+   "shift_min": 30
+  },
+  "CL": {
+   "sla_tiers": [
+    [
+     60,
+     0.3
+    ],
+    [
+     120,
+     0.4
+    ],
+    [
+     180,
+     0.2
+    ],
+    [
+     240,
+     0.1
+    ]
+   ],
+   "window_median_frac": 0.8,
+   "window_sigma": 0.2,
+   "distance_median_km": 120,
+   "rep_beta": [
+    6.5,
+    1.8
+   ],
+   "value_scale": 1.0,
+   "shift_min": 0
+  }
+ },
+ "scenarios": {
+  "normal_85": {
+   "description": "Dia util, 85% da capacidade (408/h) com perfil diario (vales e picos)",
+   "load_pct": 85,
+   "base_rate_per_h": 408.0
+  },
+  "peak_105": {
+   "description": "Dia de pico, 105% (504/h)",
+   "load_pct": 105,
+   "base_rate_per_h": 504.0
+  },
+  "overload_125": {
+   "description": "Sobrecarga sustentada, 125% (600/h)",
+   "load_pct": 125,
+   "base_rate_per_h": 600.0
+  },
+  "black_friday": {
+   "description": "Black Friday: rampa ate ~140% por 4 h, G sobe para ~22% do mix, mais atualizacoes de prazo",
+   "load_pct": 108,
+   "base_rate_per_h": 518.4,
+   "profile": "daily_smooth",
+   "rate_knots": [
+    [
+     0,
+     0.8
+    ],
+    [
+     180,
+     0.8
+    ],
+    [
+     300,
+     0.95
+    ],
+    [
+     360,
+     1.25
+    ],
+    [
+     600,
+     1.25
+    ],
+    [
+     660,
+     0.95
+    ],
+    [
+     780,
+     0.8
+    ],
+    [
+     960,
+     0.8
+    ]
+   ],
+   "mix_windows": [
+    {
+     "start_min": 300,
+     "end_min": 660,
+     "size_mix": {
+      "P": 0.43,
+      "M": 0.35,
+      "G": 0.22
+     }
+    }
+   ],
+   "update_prob": 0.06,
+   "update_deadline_share": 0.8,
+   "notes": "Media 108% (518/h); plateau de 4 h (t=360-600) em ~140% (picos do perfil ate ~145%). Mix efetivo de G ~18% no dia."
+  },
+  "promo_g_burst": {
+   "description": "Media 100% (480/h) com rajada de 2 h em que G chega a ~40% do mix",
+   "load_pct": 100,
+   "base_rate_per_h": 480.0,
+   "profile": "daily_smooth",
+   "rate_knots": [
+    [
+     0,
+     1.0
+    ],
+    [
+     960,
+     1.0
+    ]
+   ],
+   "mix_windows": [
+    {
+     "start_min": 360,
+     "end_min": 480,
+     "size_mix": {
+      "P": 0.33,
+      "M": 0.27,
+      "G": 0.4
+     }
+    }
+   ],
+   "notes": "Rajada de itens grandes entre 12h e 14h (t=360-480)."
+  },
+  "mix_shift_33": {
+   "description": "Mix 34/33/33 a 408/h (estressa a classe G)",
+   "load_pct": 85,
+   "base_rate_per_h": 408.0,
+   "size_mix": {
+    "P": 0.34,
+    "M": 0.33,
+    "G": 0.33
+   }
+  },
+  "dock_outage": {
+   "description": "normal_85 com 2 docas Pesada fora do ar por 3 h",
+   "load_pct": 85,
+   "base_rate_per_h": 408.0,
+   "outages": [
+    {
+     "class": "pesada",
+     "count": 2,
+     "start_min": 360,
+     "end_min": 540
+    }
+   ]
+  },
+  "regional_mix": {
+   "description": "Hub multi-pais (BR, MX, AR, CO, CL) a 95% (456/h) com SLA, volume e ruido distintos",
+   "load_pct": 95,
+   "base_rate_per_h": 456.0,
+   "regions": {
+    "BR": {
+     "share": 0.45
+    },
+    "MX": {
+     "share": 0.25
+    },
+    "AR": {
+     "share": 0.1
+    },
+    "CO": {
+     "share": 0.1
+    },
+    "CL": {
+     "share": 0.1
+    }
+   },
+   "notes": "Perfis diarios deslocados por regiao (MX +90 min, AR -60, CO +30)."
+  },
+  "sweep_70": {
+   "description": "Varredura de carga constante a 70% (336/h) com perfil diario suave",
+   "load_pct": 70,
+   "base_rate_per_h": 336.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_75": {
+   "description": "Varredura de carga constante a 75% (360/h) com perfil diario suave",
+   "load_pct": 75,
+   "base_rate_per_h": 360.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_80": {
+   "description": "Varredura de carga constante a 80% (384/h) com perfil diario suave",
+   "load_pct": 80,
+   "base_rate_per_h": 384.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_85": {
+   "description": "Varredura de carga constante a 85% (408/h) com perfil diario suave",
+   "load_pct": 85,
+   "base_rate_per_h": 408.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_90": {
+   "description": "Varredura de carga constante a 90% (432/h) com perfil diario suave",
+   "load_pct": 90,
+   "base_rate_per_h": 432.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_95": {
+   "description": "Varredura de carga constante a 95% (456/h) com perfil diario suave",
+   "load_pct": 95,
+   "base_rate_per_h": 456.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_100": {
+   "description": "Varredura de carga constante a 100% (480/h) com perfil diario suave",
+   "load_pct": 100,
+   "base_rate_per_h": 480.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_105": {
+   "description": "Varredura de carga constante a 105% (504/h) com perfil diario suave",
+   "load_pct": 105,
+   "base_rate_per_h": 504.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_110": {
+   "description": "Varredura de carga constante a 110% (528/h) com perfil diario suave",
+   "load_pct": 110,
+   "base_rate_per_h": 528.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_115": {
+   "description": "Varredura de carga constante a 115% (552/h) com perfil diario suave",
+   "load_pct": 115,
+   "base_rate_per_h": 552.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_120": {
+   "description": "Varredura de carga constante a 120% (576/h) com perfil diario suave",
+   "load_pct": 120,
+   "base_rate_per_h": 576.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_125": {
+   "description": "Varredura de carga constante a 125% (600/h) com perfil diario suave",
+   "load_pct": 125,
+   "base_rate_per_h": 600.0,
+   "profile": "daily_smooth"
+  },
+  "sweep_130": {
+   "description": "Varredura de carga constante a 130% (624/h) com perfil diario suave",
+   "load_pct": 130,
+   "base_rate_per_h": 624.0,
+   "profile": "daily_smooth"
+  }
+ }
+}
