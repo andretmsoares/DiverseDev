@@ -22,16 +22,17 @@ def _mean(xs):
     return sum(xs) / len(xs) if xs else 0.0
 
 
-def column_names(class_names):
+def column_names(group_names, queue_names=None):
+    queue_names = group_names if queue_names is None else queue_names
     cols = ["n_orders", "n_late", "pct_late", "mean_delay_min", "mean_delay_late_min",
             "p95_delay_min", "p99_delay_min", "max_delay_min", "n_vip", "vip_pct_late",
             "throughput_per_h", "mean_wait_min",
             "delay_mean_P", "delay_mean_M", "delay_mean_G",
             "pct_late_P", "pct_late_M", "pct_late_G"]
-    cols += ["util_" + c for c in class_names]
+    cols += ["util_" + c for c in group_names]
     cols += ["idle_pct", "n_loans"]
-    cols += ["max_queue_" + c for c in class_names]
-    cols += ["mean_queue_" + c for c in class_names]
+    cols += ["max_queue_" + c for c in queue_names]
+    cols += ["mean_queue_" + c for c in queue_names]
     cols += ["ops_total", "ops_per_order", "cpu_ms", "n_cancelled"]
     return cols
 
@@ -79,13 +80,14 @@ def compute_metrics(res):
         m["delay_mean_" + s] = _mean(ds)
         m["pct_late_" + s] = 100.0 * sum(1 for d in ds if d > 0) / len(ds) if ds else 0.0
     busy_tot = cap_tot = 0.0
-    for name, count, busy_area, q_area, max_q in res.classes:
+    for name, count, busy_area in res.groups:
         cap = count * window if window > 0 else 0.0
         m["util_" + name] = busy_area / cap if cap else 0.0
-        m["max_queue_" + name] = max_q
-        m["mean_queue_" + name] = q_area / window if window > 0 else 0.0
         busy_tot += busy_area
         cap_tot += cap
+    for name, q_area, max_q in res.queues:
+        m["max_queue_" + name] = max_q
+        m["mean_queue_" + name] = q_area / window if window > 0 else 0.0
     m["idle_pct"] = 100.0 * (1.0 - busy_tot / cap_tot) if cap_tot else 0.0
     m["n_loans"] = res.n_loans
     m["ops_total"] = res.ops_total

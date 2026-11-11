@@ -82,6 +82,8 @@ Um **heap/fila por classe**. Pedido vai para a classe cujo `sizes` contém seu t
 - Tempo de serviço = `PACK_MIN[size]` (determinístico), sem jitter por padrão.
 - `outages` (no manifest do cenário): `[{"class": "pesada", "count": 2, "start_min": 360, "end_min": 540}]`. A doca fora do ar termina o pedido em curso e só volta a pegar pedido no `end_min`.
 
+**Adendo (v2, modelos de docas; detalhes em `docs/DOCKS.md`).** Um grupo pode ter `speed` (padrao 1.0; servico = `PACK_MIN/speed`), `queue` (grupos com o mesmo nome compartilham a fila) e `alias` (nome alternativo para `outages`). Novo `borrow: "best_eligible"`: uma fila por tamanho de pedido; doca livre pega a menor `strategy.key` entre os topos das filas dos tamanhos que aceita (desempate: tamanho maior; docas menos capazes primeiro). Configs novas: `generic_nested_15` e `generic_speed_15`. Colunas `util_*` sao por grupo de docas e `queue_*`/`max_queue_*`/`mean_queue_*` por fila (por tamanho de pedido em `best_eligible`).
+
 ## 5. Estratégias (`mps.strategies`)
 
 Interface em `mps/strategies/base.py` (classe `Strategy`). O simulador cria **uma instância por fila de classe de doca**.

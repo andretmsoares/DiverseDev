@@ -28,6 +28,24 @@
       ],
       "borrow": "one_way"
     },
+    "generic_nested_15": {
+      "description": "15 docas de capacidade fisica variada (small P x4, medium P/M x5, large P/M/G x6); uma fila por tamanho de pedido; doca livre pega a menor chave entre os tamanhos que aceita",
+      "classes": [
+        {"name": "small", "sizes": ["P"], "count": 4},
+        {"name": "medium", "sizes": ["P", "M"], "count": 5},
+        {"name": "large", "sizes": ["P", "M", "G"], "count": 6, "alias": "pesada"}
+      ],
+      "borrow": "best_eligible"
+    },
+    "generic_speed_15": {
+      "description": "15 docas nao especializadas de velocidade variada (slow 0.75 x5, normal 1.0 x5, fast 1.25 x5; soma das velocidades = 15); fila unica",
+      "classes": [
+        {"name": "slow", "sizes": ["P", "M", "G"], "count": 5, "speed": 0.75, "queue": "generica"},
+        {"name": "normal", "sizes": ["P", "M", "G"], "count": 5, "speed": 1.0, "queue": "generica"},
+        {"name": "fast", "sizes": ["P", "M", "G"], "count": 5, "speed": 1.25, "queue": "generica"}
+      ],
+      "borrow": "none"
+    },
     "generic_15": {
       "description": "Baseline: 15 docas genericas, uma unica fila",
       "classes": [

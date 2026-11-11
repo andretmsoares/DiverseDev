@@ -3,27 +3,40 @@ import heapq
 import time
 
 from mps.models import PACK_MIN, WARMUP_MIN, Order
+from mps.sim.docks import layout
 from mps.strategies import make_strategy
 
 # prioridade de desempate para eventos no mesmo instante (menor primeiro)
 P_DONE, P_OUT_END, P_OUT_START, P_ARRIVAL, P_EVENT = 0, 1, 2, 3, 4
 
 
-class _Class(object):
-    __slots__ = ("name", "sizes", "count", "queue", "busy", "down", "free",
-                 "busy_area", "max_q", "q_area")
+class _Group(object):
+    """Grupo de docas identicas (mesmos tamanhos e velocidade)."""
+    __slots__ = ("name", "sizes", "count", "speed", "qidx", "busy", "down", "free",
+                 "busy_area", "max_accept")
 
-    def __init__(self, name, sizes, count, queue):
-        self.name = name
-        self.sizes = sizes
-        self.count = count
-        self.queue = queue
+    def __init__(self, g):
+        self.name = g["name"]
+        self.sizes = g["sizes"]
+        self.count = g["count"]
+        self.speed = g["speed"]
+        self.qidx = g["queue"]
         self.busy = 0
         self.down = 0
-        self.free = list(range(count - 1, -1, -1))  # pilha de slots livres
+        self.free = list(range(self.count - 1, -1, -1))  # pilha de slots livres
         self.busy_area = 0.0
-        self.max_q = 0
+        self.max_accept = max(PACK_MIN[x] for x in self.sizes)
+
+
+class _Queue(object):
+    __slots__ = ("name", "sizes", "q", "q_area", "max_q")
+
+    def __init__(self, name, sizes, q):
+        self.name = name
+        self.sizes = sizes
+        self.q = q
         self.q_area = 0.0
+        self.max_q = 0
 
 
 class SimResult(object):
@@ -36,7 +49,8 @@ class SimResult(object):
         self.n_loans = 0
         self.t_end = 0.0
         self.warmup = WARMUP_MIN
-        self.classes = []        # (name, count, busy_area, q_area, max_q)
+        self.groups = []         # (name, count, busy_area) por grupo de docas
+        self.queues = []         # (name, q_area, max_q) por fila
         self.ops_total = 0
         self.cpu_ms = 0.0
         self.series = []         # linhas de queue_timeseries (se pedido)
@@ -62,19 +76,31 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
     """
     t_cpu = time.perf_counter()
     params = params or {}
-    borrow = dock_cfg.get("borrow", "none") if borrow is None else borrow
+    if borrow is not None:
+        dock_cfg = dict(dock_cfg, borrow=borrow)
+    lay = layout(dock_cfg)
+    borrow = lay["borrow"]
     one_way = borrow == "one_way"
+    best = borrow == "best_eligible"
     res = SimResult()
     res.warmup = warmup_min
 
-    classes = []
-    size_to_class = {}
-    for ci, c in enumerate(dock_cfg["classes"]):
-        cl = _Class(c["name"], tuple(c["sizes"]), int(c["count"]), make_strategy(impl, backend=backend, **params))
-        classes.append(cl)
-        for s in c["sizes"]:
-            size_to_class[s] = ci
-    ncls = len(classes)
+    queues = [_Queue(q["name"], q["sizes"], make_strategy(impl, backend=backend, **params))
+              for q in lay["queues"]]
+    groups = [_Group(g) for g in lay["groups"]]
+    size_to_q = {}
+    for qi, q in enumerate(queues):
+        for sz in q.sizes:
+            size_to_q[sz] = qi
+    # ordem de despacho: fila (menor primeiro) e, dentro da fila, doca mais rapida
+    # primeiro; em best_eligible, a menos capaz primeiro (ordem do arquivo)
+    if best:
+        gorder = list(groups)
+    else:
+        gorder = sorted(groups, key=lambda g: (g.qidx, -g.speed))
+    ngr = len(groups)
+    res.group_names = [g.name for g in groups]
+    res.queue_names = [q.name for q in queues]
 
     pool = [_fresh(o) for o in orders]
     by_id = dict((o.order_id, o) for o in pool)
@@ -87,21 +113,21 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
         counter += 1
         heap.append((ev.time_min, P_EVENT, counter, "ev", ev))
     for ou in outages:
-        ci = None
-        for i, cl in enumerate(classes):
-            if cl.name == ou["class"]:
-                ci = i
-        if ci is None:
-            # config sem essa classe: com uma unica classe a falha vale para ela;
-            # senao e ignorada (documentado em docs/STRATEGIES.md)
-            if ncls == 1:
-                ci = 0
+        gi = None
+        for i, g in enumerate(lay["groups"]):
+            if g["name"] == ou["class"] or g["alias"] == ou["class"]:
+                gi = i
+        if gi is None:
+            # config sem essa classe: com um unico grupo a falha vale para ele;
+            # senao e ignorada (documentado em docs/DOCKS.md)
+            if ngr == 1:
+                gi = 0
             else:
                 continue
         counter += 1
-        heap.append((ou["start_min"], P_OUT_START, counter, "os", (ci, int(ou["count"]))))
+        heap.append((ou["start_min"], P_OUT_START, counter, "os", (gi, int(ou["count"]))))
         counter += 1
-        heap.append((ou["end_min"], P_OUT_END, counter, "oe", (ci, int(ou["count"]))))
+        heap.append((ou["end_min"], P_OUT_END, counter, "oe", (gi, int(ou["count"]))))
     heapq.heapify(heap)
 
     n = len(pool)
@@ -116,8 +142,8 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
     def sample_upto(t):
         nonlocal next_sample
         while next_sample < t:
-            res.series.append([next_sample] + [len(c.queue) for c in classes] +
-                              [c.busy for c in classes])
+            res.series.append([next_sample] + [len(c.q) for c in queues] +
+                              [g.busy for g in groups])
             next_sample += sample_dt
 
     def integrate(t):
@@ -125,40 +151,58 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
         a = last_t if last_t > warmup_min else warmup_min
         if t > a:
             dt = t - a
-            for c in classes:
-                c.q_area += len(c.queue) * dt
+            for c in queues:
+                c.q_area += len(c.q) * dt
 
     def dispatch():
-        for ci in range(ncls):
-            cl = classes[ci]
-            while cl.count - cl.down - cl.busy > 0:
+        for gr in gorder:
+            while gr.count - gr.down - gr.busy > 0:
                 loan = False
-                if len(cl.queue):
-                    o = cl.queue.pop(now)
-                elif one_way and ci > 0:
-                    best = None
-                    best_key = None
-                    best_cj = -1
-                    for cj in range(ci):
-                        q = classes[cj].queue
-                        if len(q):
-                            top = q.peek(now, 1)[0]
-                            k = q.key(top, now)
-                            if best is None or k < best_key:
-                                best, best_key, best_cj = top, k, cj
-                    if best is None:
+                if best:
+                    # menor chave entre os topos das filas dos tamanhos aceitos;
+                    # desempate: tamanho maior primeiro (G, M, P)
+                    cand = None
+                    cand_key = None
+                    for sz in ("G", "M", "P"):
+                        if sz in gr.sizes and sz in size_to_q:
+                            q = queues[size_to_q[sz]].q
+                            if len(q):
+                                top = q.peek(now, 1)[0]
+                                k = q.key(top, now)
+                                if cand is None or k < cand_key:
+                                    cand, cand_key = sz, k
+                    if cand is None:
                         break
-                    o = classes[best_cj].queue.pop(now)
-                    loan = True
+                    o = queues[size_to_q[cand]].q.pop(now)
+                    loan = PACK_MIN[o.size] < gr.max_accept
                 else:
-                    break
-                start(o, cl, loan)
+                    own = queues[gr.qidx].q
+                    if len(own):
+                        o = own.pop(now)
+                    elif one_way and gr.qidx > 0:
+                        bst = None
+                        bst_key = None
+                        bst_q = -1
+                        for qj in range(gr.qidx):
+                            q = queues[qj].q
+                            if len(q):
+                                top = q.peek(now, 1)[0]
+                                k = q.key(top, now)
+                                if bst is None or k < bst_key:
+                                    bst, bst_key, bst_q = top, k, qj
+                        if bst is None:
+                            break
+                        o = queues[bst_q].q.pop(now)
+                        loan = True
+                    else:
+                        break
+                start(o, gr, loan)
 
     def start(o, cl, loan):
         nonlocal counter
         slot = cl.free.pop()
         cl.busy += 1
-        end = now + PACK_MIN[o.size]
+        end = now + PACK_MIN[o.size] / cl.speed
         state[o.order_id] = "run"
         if loan:
             res.n_loans += 1
@@ -184,8 +228,10 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
             o = pool[ai]
             ai += 1
             res.n_arrivals += 1
-            ci = size_to_class[o.size]
-            classes[ci].queue.push(o, now)
+            if o.size not in size_to_q:
+                raise ValueError("nenhuma doca aceita o tamanho %r (pedido %s)" % (o.size, o.order_id))
+            ci = size_to_q[o.size]
+            queues[ci].q.push(o, now)
             state[o.order_id] = "q"
             cls_of[o.order_id] = ci
         else:
@@ -207,15 +253,15 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
                     res.assignments.append((cl.name, slot, st, now, o.order_id, loan, measured))
                     res.completed_ids.append(o.order_id)
             elif kind == "os":
-                classes[payload[0]].down += payload[1]
+                groups[payload[0]].down += payload[1]
             elif kind == "oe":
-                classes[payload[0]].down -= payload[1]
+                groups[payload[0]].down -= payload[1]
             else:  # "ev": update/cancel
                 ev = payload
                 if state.get(ev.order_id) == "q":
                     ci = cls_of[ev.order_id]
                     if ev.kind == "cancel":
-                        classes[ci].queue.cancel(ev.order_id)
+                        queues[ci].q.cancel(ev.order_id)
                         state[ev.order_id] = "cancel"
                         if by_id[ev.order_id].arrival_min >= warmup_min:
                             res.n_cancelled += 1
@@ -223,7 +269,7 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
                             res.cancelled_ids.append(ev.order_id)
                     elif ev.kind == "update":
                         if ev.new_score is not None or ev.new_deadline_min is not None:
-                            classes[ci].queue.update(ev.order_id, now, ev.new_score,
+                            queues[ci].q.update(ev.order_id, now, ev.new_score,
                                                      ev.new_deadline_min)
         # despacha so depois de aplicar TODOS os eventos do mesmo instante
         nxt = inf
@@ -234,8 +280,8 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
         if nxt > now:
             dispatch()
         if now >= warmup_min:
-            for c in classes:
-                ql = len(c.queue)
+            for c in queues:
+                ql = len(c.q)
                 if ql > c.max_q:
                     c.max_q = ql
 
@@ -243,8 +289,8 @@ def simulate(orders, events, dock_cfg, impl, params=None, outages=(),
         # amostras restantes ate o fim (estado final: tudo vazio)
         sample_upto(t_end + sample_dt)
     res.t_end = t_end
-    res.classes = [(c.name, c.count, c.busy_area, c.q_area, c.max_q) for c in classes]
-    res.ops_total = sum(c.queue.ops for c in classes)
+    res.groups = [(g.name, g.count, g.busy_area) for g in groups]
+    res.queues = [(q.name, q.q_area, q.max_q) for q in queues]
+    res.ops_total = sum(q.q.ops for q in queues)
     res.cpu_ms = (time.perf_counter() - t_cpu) * 1000.0
-    res.class_names = [c.name for c in classes]
     return res
